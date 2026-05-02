@@ -54,6 +54,12 @@ package-winui.bat
 
 WinUI 3 apps need Windows App Runtime installed and MSIX packages must be signed/trusted before installation.
 
+Install and launch from an Administrator PowerShell with:
+
+```bat
+install-winui.bat
+```
+
 ## Notes
 
 This app expects XAMPP paths under `C:\xampp`. If your XAMPP is installed somewhere else, update the `root` value in `XdbDatabase.cs`.
