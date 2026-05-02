@@ -29,7 +29,7 @@
             <Setter Property="FontSize" Value="15" />
         </Style>
         <Style x:Key="ServiceButtonStyle" TargetType="Button">
-            <Setter Property="MinWidth" Value="98" />
+            <Setter Property="MinWidth" Value="0" />
             <Setter Property="Height" Value="42" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="FontSize" Value="15" />
@@ -242,18 +242,21 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="76" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="White" Text="Apache" />
+                                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="White" Text="Apache" TextTrimming="CharacterEllipsis" />
                                             <TextBlock x:Name="ApachePidText" Foreground="{StaticResource MutedBrush}" Text="PID -" />
                                         </StackPanel>
                                         <Border
                                             Grid.Column="1"
-                                            Padding="12,6"
+                                            Width="76"
+                                            Height="30"
+                                            HorizontalAlignment="Right"
+                                            Padding="8,0"
                                             Background="#EAF8EF"
                                             CornerRadius="4">
-                                            <TextBlock x:Name="ApacheStateText" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
+                                            <TextBlock x:Name="ApacheStateText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
                                         </Border>
                                     </Grid>
                                     <TextBlock
@@ -263,11 +266,16 @@
                                         FontSize="17"
                                         Foreground="{StaticResource MutedBrush}"
                                         Text="Port 80: -&#x0a;Port 443: -" />
-                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="StartApacheButton" Background="#43D166" Click="StartApacheButton_Click" Content="Start" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
-                                        <Button x:Name="StopApacheButton" Background="#FF444B" Click="StopApacheButton_Click" Content="Stop" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
-                                        <Button x:Name="RestartApacheButton" Background="#229CF7" Click="RestartApacheButton_Click" Content="Restart" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
-                                    </StackPanel>
+                                    <Grid Grid.Row="2" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="StartApacheButton" Grid.Column="0" Background="#43D166" Click="StartApacheButton_Click" Content="Start" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="StopApacheButton" Grid.Column="1" Background="#FF444B" Click="StopApacheButton_Click" Content="Stop" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="RestartApacheButton" Grid.Column="2" Background="#229CF7" Click="RestartApacheButton_Click" Content="Restart" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                    </Grid>
                                 </Grid>
                             </Border>
 
@@ -281,18 +289,21 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="76" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="White" Text="MySQL / MariaDB" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="24" FontWeight="Bold" Foreground="White" Text="MySQL / MariaDB" TextTrimming="CharacterEllipsis" />
                                             <TextBlock x:Name="MysqlPidText" Foreground="{StaticResource MutedBrush}" Text="PID -" />
                                         </StackPanel>
                                         <Border
                                             Grid.Column="1"
-                                            Padding="12,6"
+                                            Width="76"
+                                            Height="30"
+                                            HorizontalAlignment="Right"
+                                            Padding="8,0"
                                             Background="#EAF8EF"
                                             CornerRadius="4">
-                                            <TextBlock x:Name="MysqlStateText" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
+                                            <TextBlock x:Name="MysqlStateText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
                                         </Border>
                                     </Grid>
                                     <TextBlock
@@ -302,11 +313,16 @@
                                         FontSize="17"
                                         Foreground="{StaticResource MutedBrush}"
                                         Text="Port 3306: -" />
-                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="StartMysqlButton" Background="#43D166" Click="StartMysqlButton_Click" Content="Start" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
-                                        <Button x:Name="StopMysqlButton" Background="#FF444B" Click="StopMysqlButton_Click" Content="Stop" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
-                                        <Button x:Name="RestartMysqlButton" Background="#229CF7" Click="RestartMysqlButton_Click" Content="Restart" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
-                                    </StackPanel>
+                                    <Grid Grid.Row="2" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="StartMysqlButton" Grid.Column="0" Background="#43D166" Click="StartMysqlButton_Click" Content="Start" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="StopMysqlButton" Grid.Column="1" Background="#FF444B" Click="StopMysqlButton_Click" Content="Stop" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="RestartMysqlButton" Grid.Column="2" Background="#229CF7" Click="RestartMysqlButton_Click" Content="Restart" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </Grid>
