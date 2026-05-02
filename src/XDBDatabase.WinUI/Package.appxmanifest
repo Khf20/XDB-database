@@ -9,7 +9,7 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="1B9D8D8D-F4E5-480D-8A36-60A54D175E93"
+    Name="XDBDatabase.WinUI"
     Publisher="CN=XDBDatabase"
     Version="1.0.0.0" />
 

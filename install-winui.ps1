@@ -59,12 +59,20 @@ if ($LASTEXITCODE -ne 0) { throw 'signtool sign failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'signtool verify failed.' }
 
 Get-AppxPackage *XDBDatabase* | Remove-AppxPackage -ErrorAction SilentlyContinue
+Get-AppxPackage |
+    Where-Object { $_.Publisher -eq $certSubject -or $_.Name -eq '1B9D8D8D-F4E5-480D-8A36-60A54D175E93' } |
+    Remove-AppxPackage -ErrorAction SilentlyContinue
 Add-AppxPackage -Path $msix.FullName
 
-$pkg = Get-AppxPackage *XDBDatabase* | Select-Object -First 1
-if ($pkg) {
-    Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!App"
-    Write-Host "Installed and launched $($pkg.Name) $($pkg.Version)"
+$app = Get-StartApps | Where-Object { $_.Name -eq 'XDB-database' -or $_.AppID -like '*XDBDatabase*' } | Select-Object -First 1
+if ($app) {
+    Start-Process "shell:AppsFolder\$($app.AppID)"
+    Write-Host "Installed and launched $($app.Name)"
 } else {
-    Write-Host 'Package installed, but package lookup did not return an app.'
+    $pkg = Get-AppxPackage | Where-Object { $_.Publisher -eq $certSubject } | Select-Object -First 1
+    if ($pkg) {
+        Write-Host "Installed $($pkg.Name), but Start Menu app lookup did not return an app yet."
+    } else {
+        Write-Host 'Package installed, but package lookup did not return an app.'
+    }
 }
