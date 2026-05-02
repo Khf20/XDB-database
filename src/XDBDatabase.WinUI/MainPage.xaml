@@ -153,34 +153,39 @@
             </Grid>
 
             <Grid Grid.Row="1" Margin="0,22,0,0">
-                <ScrollViewer x:Name="DashboardView">
-                    <StackPanel Spacing="16">
+                <ScrollViewer
+                    x:Name="DashboardView"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto">
+                    <StackPanel MinWidth="760" Spacing="16">
                         <Grid ColumnSpacing="14" RowSpacing="14">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="APACHE" />
                                     <TextBlock x:Name="ApacheVersionText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="PHP VIA APACHE" />
                                     <TextBlock x:Name="ApachePhpText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="PHP CLI" />
                                     <TextBlock x:Name="PhpCliText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="MARIADB" />
                                     <TextBlock x:Name="MariaDbText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
@@ -189,12 +194,12 @@
                         </Grid>
 
                         <Grid ColumnSpacing="16" RowSpacing="16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                            <Border Grid.Column="0" MinHeight="300" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="0" MinHeight="260" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -232,7 +237,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Column="1" MinHeight="300" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="1" MinHeight="260" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />

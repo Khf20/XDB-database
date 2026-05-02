@@ -259,6 +259,13 @@ public sealed partial class MainPage : Page
 
     private void StartApache()
     {
+        if (IsServiceInstalled("Apache2.4"))
+        {
+            RunElevatedAndWait("sc.exe", "start Apache2.4");
+            Thread.Sleep(1800);
+            return;
+        }
+
         var phpDir = GetApachePhpDir();
         var psi = new ProcessStartInfo(apacheExe, "-f \"" + apacheConf + "\"")
         {
@@ -274,6 +281,13 @@ public sealed partial class MainPage : Page
 
     private void StopApache()
     {
+        if (IsServiceInstalled("Apache2.4"))
+        {
+            RunElevatedAndWait("sc.exe", "stop Apache2.4");
+            Thread.Sleep(1800);
+            return;
+        }
+
         RunCapture(apacheExe, "-k shutdown -f \"" + apacheConf + "\"");
         Thread.Sleep(700);
         foreach (var p in GetProcesses("httpd"))
@@ -281,6 +295,30 @@ public sealed partial class MainPage : Page
             try { p.Kill(); } catch { }
         }
         Thread.Sleep(400);
+    }
+
+    private bool IsServiceInstalled(string serviceName)
+    {
+        var output = RunCapture("sc.exe", "query " + serviceName);
+        return output.Contains("SERVICE_NAME:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void RunElevatedAndWait(string exe, string args)
+    {
+        try
+        {
+            var process = Process.Start(new ProcessStartInfo(exe, args)
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+            process?.WaitForExit(30000);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Aksi ini membutuhkan izin Administrator. Setujui prompt UAC Windows, lalu coba lagi. Detail: " + ex.Message, ex);
+        }
     }
 
     private void StartMysql()
