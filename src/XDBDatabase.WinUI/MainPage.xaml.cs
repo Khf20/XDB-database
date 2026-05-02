@@ -143,6 +143,8 @@ public sealed partial class MainPage : Page
         RestartMysqlButton.IsEnabled = state.MysqlRunning;
 
         var runningCount = (state.ApacheRunning ? 1 : 0) + (state.MysqlRunning ? 1 : 0);
+        ActiveServicesText.Text = runningCount.ToString();
+        DashboardClockText.Text = DateTime.Now.ToString("HH:mm:ss");
         SidebarStatusText.Text = runningCount + " service aktif";
         SidebarTimeText.Text = DateTime.Now.ToString("HH:mm:ss");
     }

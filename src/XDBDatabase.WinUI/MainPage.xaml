@@ -5,26 +5,43 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Background="#151A1F"
     mc:Ignorable="d">
 
     <Page.Resources>
-        <SolidColorBrush x:Key="SidebarBrush" Color="#111827" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#667085" />
-        <SolidColorBrush x:Key="CardStrokeBrush" Color="#D9E2F1" />
+        <SolidColorBrush x:Key="SidebarBrush" Color="#101722" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#9CA8B8" />
+        <SolidColorBrush x:Key="CardStrokeBrush" Color="#334050" />
         <SolidColorBrush x:Key="AccentBrush" Color="#F05A28" />
-        <SolidColorBrush x:Key="SuccessBrush" Color="#12824C" />
-        <SolidColorBrush x:Key="DangerBrush" Color="#D92D20" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#52D66B" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#FF4B4B" />
+        <SolidColorBrush x:Key="PageBrush" Color="#151A1F" />
+        <SolidColorBrush x:Key="CardBrush" Color="#20262C" />
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource CardStrokeBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="18" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Padding" Value="22" />
         </Style>
         <Style x:Key="NavTextStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#E8EEF8" />
             <Setter Property="FontSize" Value="15" />
+        </Style>
+        <Style x:Key="ServiceButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="98" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="ToolTileStyle" TargetType="Button">
+            <Setter Property="Height" Value="168" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="Background" Value="#202A35" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#2F3B49" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
     </Page.Resources>
 
@@ -104,12 +121,7 @@
                 </Button>
             </StackPanel>
 
-            <Border
-                Grid.Row="2"
-                Margin="20"
-                Padding="16"
-                Background="#1F2937"
-                CornerRadius="8">
+            <Border Grid.Row="2" Margin="20" Padding="16" Background="#1C2734" CornerRadius="10">
                 <StackPanel Spacing="6">
                     <TextBlock
                         x:Name="SidebarStatusText"
@@ -121,7 +133,7 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Column="1" Padding="28">
+        <Grid Grid.Column="1" Padding="28" Background="{StaticResource PageBrush}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -138,6 +150,7 @@
                         x:Name="PageTitle"
                         FontSize="34"
                         FontWeight="Bold"
+                        Foreground="White"
                         Text="Dashboard" />
                     <TextBlock Foreground="{StaticResource MutedBrush}" Text="C:\xampp" />
                 </StackPanel>
@@ -158,6 +171,26 @@
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="14">
+                        <Border Style="{StaticResource CardBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="4">
+                                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Total Active Services" />
+                                    <TextBlock x:Name="ActiveServicesText" FontSize="46" FontWeight="Bold" Foreground="White" Text="0" />
+                                </StackPanel>
+                                <TextBlock
+                                    x:Name="DashboardClockText"
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    FontSize="30"
+                                    Foreground="White"
+                                    Text="00:00:00" />
+                            </Grid>
+                        </Border>
+
                         <Grid ColumnSpacing="14" RowSpacing="14">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -167,28 +200,28 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="0" Grid.Column="0" Padding="16" CornerRadius="14" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="APACHE" />
-                                    <TextBlock x:Name="ApacheVersionText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="ApacheVersionText" FontWeight="SemiBold" Foreground="White" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="0" Grid.Column="1" Padding="16" CornerRadius="14" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="PHP VIA APACHE" />
-                                    <TextBlock x:Name="ApachePhpText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="ApachePhpText" FontWeight="SemiBold" Foreground="White" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="1" Grid.Column="0" Padding="16" CornerRadius="14" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="PHP CLI" />
-                                    <TextBlock x:Name="PhpCliText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="PhpCliText" FontWeight="SemiBold" Foreground="White" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Row="1" Grid.Column="1" Padding="16" CornerRadius="14" Style="{StaticResource CardBorderStyle}">
                                 <StackPanel Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="MARIADB" />
-                                    <TextBlock x:Name="MariaDbText" FontWeight="SemiBold" Text="-" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="MariaDbText" FontWeight="SemiBold" Foreground="White" Text="-" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -199,7 +232,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <Border Grid.Column="0" MinHeight="190" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Column="0" MinHeight="230" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -212,7 +245,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock FontSize="26" FontWeight="Bold" Text="Apache" />
+                                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="White" Text="Apache" />
                                             <TextBlock x:Name="ApachePidText" Foreground="{StaticResource MutedBrush}" Text="PID -" />
                                         </StackPanel>
                                         <Border
@@ -220,24 +253,25 @@
                                             Padding="12,6"
                                             Background="#EAF8EF"
                                             CornerRadius="4">
-                                            <TextBlock x:Name="ApacheStateText" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
+                                            <TextBlock x:Name="ApacheStateText" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
                                         </Border>
                                     </Grid>
                                     <TextBlock
                                         x:Name="ApachePortsText"
                                         Grid.Row="1"
-                                        Margin="0,16,0,16"
+                                        Margin="0,18,0,18"
+                                        FontSize="17"
                                         Foreground="{StaticResource MutedBrush}"
                                         Text="Port 80: -&#x0a;Port 443: -" />
                                     <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="StartApacheButton" Click="StartApacheButton_Click" Content="Start" />
-                                        <Button x:Name="StopApacheButton" Click="StopApacheButton_Click" Content="Stop" />
-                                        <Button x:Name="RestartApacheButton" Click="RestartApacheButton_Click" Content="Restart" />
+                                        <Button x:Name="StartApacheButton" Background="#43D166" Click="StartApacheButton_Click" Content="Start" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="StopApacheButton" Background="#FF444B" Click="StopApacheButton_Click" Content="Stop" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="RestartApacheButton" Background="#229CF7" Click="RestartApacheButton_Click" Content="Restart" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Column="1" MinHeight="190" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Column="1" MinHeight="230" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -250,7 +284,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock FontSize="26" FontWeight="Bold" Text="MySQL / MariaDB" />
+                                            <TextBlock FontSize="28" FontWeight="Bold" Foreground="White" Text="MySQL / MariaDB" TextTrimming="CharacterEllipsis" />
                                             <TextBlock x:Name="MysqlPidText" Foreground="{StaticResource MutedBrush}" Text="PID -" />
                                         </StackPanel>
                                         <Border
@@ -258,19 +292,20 @@
                                             Padding="12,6"
                                             Background="#EAF8EF"
                                             CornerRadius="4">
-                                            <TextBlock x:Name="MysqlStateText" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
+                                            <TextBlock x:Name="MysqlStateText" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
                                         </Border>
                                     </Grid>
                                     <TextBlock
                                         x:Name="MysqlPortsText"
                                         Grid.Row="1"
-                                        Margin="0,16,0,16"
+                                        Margin="0,18,0,18"
+                                        FontSize="17"
                                         Foreground="{StaticResource MutedBrush}"
                                         Text="Port 3306: -" />
                                     <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                                        <Button x:Name="StartMysqlButton" Click="StartMysqlButton_Click" Content="Start" />
-                                        <Button x:Name="StopMysqlButton" Click="StopMysqlButton_Click" Content="Stop" />
-                                        <Button x:Name="RestartMysqlButton" Click="RestartMysqlButton_Click" Content="Restart" />
+                                        <Button x:Name="StartMysqlButton" Background="#43D166" Click="StartMysqlButton_Click" Content="Start" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="StopMysqlButton" Background="#FF444B" Click="StopMysqlButton_Click" Content="Stop" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
+                                        <Button x:Name="RestartMysqlButton" Background="#229CF7" Click="RestartMysqlButton_Click" Content="Restart" Foreground="White" Style="{StaticResource ServiceButtonStyle}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -330,25 +365,55 @@
                     </Border>
                 </Grid>
 
-                <Grid x:Name="ToolsView" Visibility="Collapsed">
-                    <Grid ColumnSpacing="14" RowSpacing="14">
+                <ScrollViewer x:Name="ToolsView" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                    <Grid ColumnSpacing="18" RowSpacing="18">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="120" />
-                            <RowDefinition Height="120" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
                         </Grid.RowDefinitions>
-                        <Button Grid.Row="0" Grid.Column="0" Click="OpenHtdocs_Click" Content="Open htdocs" />
-                        <Button Grid.Row="0" Grid.Column="1" Click="OpenApacheConfig_Click" Content="Open Apache config" />
-                        <Button Grid.Row="0" Grid.Column="2" Click="OpenMysqlData_Click" Content="Open MySQL data" />
-                        <Button Grid.Row="1" Grid.Column="0" Click="OpenRoot_Click" Content="Open C:\xampp" />
-                        <Button Grid.Row="1" Grid.Column="1" Click="PhpMyAdminButton_Click" Content="Open phpMyAdmin" />
-                        <Button Grid.Row="1" Grid.Column="2" Click="OpenDashboard_Click" Content="Open XAMPP dashboard" />
+                        <Button Grid.Row="0" Grid.Column="0" Click="OpenHtdocs_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8B7;" />
+                                <TextBlock FontSize="22" Text="Open htdocs" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Row="0" Grid.Column="1" Click="OpenApacheConfig_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE713;" />
+                                <TextBlock FontSize="22" Text="Apache Config" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Row="0" Grid.Column="2" Click="OpenMysqlData_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8FC;" />
+                                <TextBlock FontSize="22" Text="MySQL Data" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Row="1" Grid.Column="0" Click="OpenRoot_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE838;" />
+                                <TextBlock FontSize="22" Text="Open C:\xampp" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Row="1" Grid.Column="1" Click="PhpMyAdminButton_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE968;" />
+                                <TextBlock FontSize="22" Text="phpMyAdmin" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Row="1" Grid.Column="2" Click="OpenDashboard_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xF246;" />
+                                <TextBlock FontSize="22" Text="Server Status" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
-                </Grid>
+                </ScrollViewer>
             </Grid>
         </Grid>
     </Grid>
