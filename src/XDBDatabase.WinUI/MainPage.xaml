@@ -155,9 +155,9 @@
             <Grid Grid.Row="1" Margin="0,22,0,0">
                 <ScrollViewer
                     x:Name="DashboardView"
-                    HorizontalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
-                    <StackPanel MinWidth="760" Spacing="16">
+                    <StackPanel Spacing="14">
                         <Grid ColumnSpacing="14" RowSpacing="14">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -194,16 +194,16 @@
                         </Grid>
 
                         <Grid ColumnSpacing="16" RowSpacing="16">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                            <Border Grid.Row="0" MinHeight="260" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Column="0" MinHeight="190" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid>
@@ -226,10 +226,10 @@
                                     <TextBlock
                                         x:Name="ApachePortsText"
                                         Grid.Row="1"
-                                        Margin="0,24,0,0"
+                                        Margin="0,16,0,16"
                                         Foreground="{StaticResource MutedBrush}"
                                         Text="Port 80: -&#x0a;Port 443: -" />
-                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10">
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
                                         <Button x:Name="StartApacheButton" Click="StartApacheButton_Click" Content="Start" />
                                         <Button x:Name="StopApacheButton" Click="StopApacheButton_Click" Content="Stop" />
                                         <Button x:Name="RestartApacheButton" Click="RestartApacheButton_Click" Content="Restart" />
@@ -237,11 +237,11 @@
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Row="1" MinHeight="260" Style="{StaticResource CardBorderStyle}">
+                            <Border Grid.Column="1" MinHeight="190" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid>
@@ -264,10 +264,10 @@
                                     <TextBlock
                                         x:Name="MysqlPortsText"
                                         Grid.Row="1"
-                                        Margin="0,24,0,0"
+                                        Margin="0,16,0,16"
                                         Foreground="{StaticResource MutedBrush}"
                                         Text="Port 3306: -" />
-                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10">
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
                                         <Button x:Name="StartMysqlButton" Click="StartMysqlButton_Click" Content="Start" />
                                         <Button x:Name="StopMysqlButton" Click="StopMysqlButton_Click" Content="Stop" />
                                         <Button x:Name="RestartMysqlButton" Click="RestartMysqlButton_Click" Content="Restart" />
