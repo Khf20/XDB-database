@@ -207,16 +207,18 @@ namespace XdbDatabase
             {
                 Text = "XDB-database",
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
-                Location = new Point(76, 28),
-                Size = new Size(170, 24)
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                Location = new Point(84, 27),
+                Size = new Size(176, 26),
+                AutoEllipsis = false
             });
             sidebar.Controls.Add(new Label
             {
-                Text = "Database control app",
+                Text = "Database control",
                 ForeColor = Color.FromArgb(174, 184, 200),
-                Location = new Point(77, 54),
-                Size = new Size(170, 20)
+                Location = new Point(85, 54),
+                Size = new Size(174, 20),
+                AutoEllipsis = true
             });
 
             navDashboard = NavButton("Dashboard", 98);
@@ -409,7 +411,7 @@ namespace XdbDatabase
             var gap = 14;
             var availableWidth = Math.Max(1, dashboardPage.ClientSize.Width);
             var versionCards = dashboardPage.Controls.OfType<Panel>().Where(p => p.Tag as string == "version").OrderBy(p => p.TabIndex).ToList();
-            var columns = availableWidth < 430 ? 1 : (availableWidth < 720 ? 2 : 4);
+            var columns = availableWidth < 430 ? 1 : (availableWidth < 980 ? 2 : 4);
             var versionHeight = 72;
             var w = Math.Max(120, (availableWidth - gap * (columns - 1)) / columns);
             for (var i = 0; i < versionCards.Count; i++)
@@ -426,7 +428,7 @@ namespace XdbDatabase
 
             var rows = versionCards.Count == 0 ? 0 : (int)Math.Ceiling(versionCards.Count / (double)columns);
             var serviceTop = rows == 0 ? 0 : rows * versionHeight + Math.Max(0, rows - 1) * gap + 24;
-            var twoColumns = availableWidth >= 720;
+            var twoColumns = availableWidth >= 980;
             var cardW = twoColumns ? Math.Max(300, (availableWidth - gap) / 2) : availableWidth;
             var cardH = twoColumns ? Math.Max(260, dashboardPage.ClientSize.Height - serviceTop - 4) : 260;
             var apacheCard = dashboardPage.Controls.Find("ApacheCard", false).FirstOrDefault();
@@ -458,7 +460,7 @@ namespace XdbDatabase
         private void PositionButtons(Control parent, Button a, Button b, Button c)
         {
             var gap = 8;
-            var buttonWidth = Math.Min(110, Math.Max(78, (parent.Width - 44 - (gap * 2)) / 3));
+            var buttonWidth = Math.Min(106, Math.Max(76, (parent.Width - 44 - (gap * 2)) / 3));
             a.Width = buttonWidth;
             b.Width = buttonWidth;
             c.Width = buttonWidth;
