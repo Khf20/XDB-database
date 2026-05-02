@@ -18,6 +18,8 @@ It provides a modern dashboard for:
 
 ## Build
 
+### WinForms legacy build
+
 Run:
 
 ```bat
@@ -29,6 +31,28 @@ The output will be:
 ```text
 XDB-database.exe
 ```
+
+### WinUI 3 build
+
+The WinUI 3 rewrite lives in:
+
+```text
+src\XDBDatabase.WinUI
+```
+
+Build it with:
+
+```bat
+build-winui.bat
+```
+
+Create an MSIX package with:
+
+```bat
+package-winui.bat
+```
+
+WinUI 3 apps need Windows App Runtime installed and MSIX packages must be signed/trusted before installation.
 
 ## Notes
 

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "XDBDatabase.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "XDBDatabase.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

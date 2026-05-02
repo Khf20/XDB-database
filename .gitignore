@@ -1,9 +1,12 @@
 bin/
 obj/
+AppPackages/
 *.user
 *.suo
 *.log
 *.pid
+*.cer
+*.pfx
 ui-check*.png
 ui-current*.png
 *.app-bak-*
