@@ -13,6 +13,10 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>XDB-database</AssemblyName>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

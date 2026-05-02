@@ -14,17 +14,22 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Run this script from PowerShell as Administrator.'
 }
 
-if (-not $SkipPackage) {
+if ((Test-Path -LiteralPath $project) -and -not $SkipPackage) {
     dotnet publish $project -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never
 }
 
-$msix = Get-ChildItem -Path $packageRoot -Recurse -Filter '*.msix' |
+$searchRoots = @()
+if (Test-Path -LiteralPath $packageRoot) { $searchRoots += $packageRoot }
+$searchRoots += $root
+
+$msix = $searchRoots |
+    ForEach-Object { Get-ChildItem -Path $_ -Recurse -Filter '*.msix' -ErrorAction SilentlyContinue } |
     Where-Object { $_.FullName -notmatch '\\Dependencies\\' -and $_.Name -like '*_x64.msix' } |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
 if (-not $msix) {
-    throw 'MSIX package was not found. Run package-winui.bat first.'
+    throw 'MSIX package was not found. Run package-winui.bat first, or place the release MSIX next to this script.'
 }
 
 $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe |
