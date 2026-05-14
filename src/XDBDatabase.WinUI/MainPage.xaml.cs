@@ -248,8 +248,8 @@ public sealed partial class MainPage : Page
         mysqlServiceNames = ParseServiceNames(settings.MysqlServiceNames);
 
         stackRoot = Path.Combine(root, "stack");
-        apacheRoot = Path.Combine(stackRoot, "apache");
-        mariadbRoot = Path.Combine(stackRoot, "mariadb");
+        apacheRoot = ResolveStackComponentRoot("apache", @"bin\httpd.exe", "Apache*");
+        mariadbRoot = ResolveStackComponentRoot("mariadb", @"bin\mysqld.exe", "MariaDB*");
         phpStackRoot = stackRoot;
         wwwDir = Path.Combine(root, "www");
         dataDir = Path.Combine(root, "data");
@@ -303,6 +303,45 @@ public sealed partial class MainPage : Page
             : preferred;
     }
 
+    private string ResolveStackComponentRoot(string conventionalFolder, string requiredRelativeFile, string searchPattern)
+    {
+        var conventional = Path.Combine(stackRoot, conventionalFolder);
+        if (File.Exists(Path.Combine(conventional, requiredRelativeFile)))
+        {
+            return conventional;
+        }
+
+        if (!Directory.Exists(stackRoot))
+        {
+            return conventional;
+        }
+
+        return Directory.GetDirectories(stackRoot, searchPattern)
+            .Concat(Directory.GetDirectories(stackRoot))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(dir => File.Exists(Path.Combine(dir, requiredRelativeFile))) ?? conventional;
+    }
+
+    private string? ResolvePhpMyAdminRoot()
+    {
+        var conventional = Path.Combine(root, @"apps\phpmyadmin");
+        if (File.Exists(Path.Combine(conventional, "index.php")))
+        {
+            return conventional;
+        }
+
+        var appsRoot = Path.Combine(root, "apps");
+        if (!Directory.Exists(appsRoot))
+        {
+            return null;
+        }
+
+        return Directory.GetDirectories(appsRoot, "phpMyAdmin*")
+            .Concat(Directory.GetDirectories(appsRoot, "phpmyadmin*"))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(dir => File.Exists(Path.Combine(dir, "index.php")));
+    }
+
     private void EnsurePortableDirectories()
     {
         foreach (var directory in new[]
@@ -312,9 +351,7 @@ public sealed partial class MainPage : Page
             wwwDir,
             dataDir,
             Path.Combine(root, "config"),
-            Path.Combine(apacheRoot, "conf"),
-            Path.Combine(apacheRoot, "logs"),
-            Path.Combine(mariadbRoot, "logs")
+            Path.Combine(root, "apps")
         })
         {
             Directory.CreateDirectory(directory);
@@ -725,6 +762,7 @@ public sealed partial class MainPage : Page
         EnsurePortableBinaryExists(apacheExe, "Apache binary belum ada. Ekstrak Apache Lounge ke stack\\apache.");
         EnsurePortableBinaryExists(mysqlExe, "MariaDB binary belum ada. Ekstrak MariaDB portable ke stack\\mariadb.");
         EnsurePortableBinaryExists(phpExe, "PHP binary belum ada. Ekstrak PHP for Windows ke " + selectedPhpDir + ".");
+        await EnsurePhpIniAsync();
         ResolveRuntimePorts();
 
         if (!File.Exists(apacheTemplateFile))
@@ -755,6 +793,29 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private async Task EnsurePhpIniAsync()
+    {
+        var phpIni = Path.Combine(selectedPhpDir, "php.ini");
+        if (File.Exists(phpIni))
+        {
+            return;
+        }
+
+        var source = new[]
+        {
+            Path.Combine(selectedPhpDir, "php.ini-development"),
+            Path.Combine(selectedPhpDir, "php.ini-production")
+        }.FirstOrDefault(File.Exists);
+
+        if (source == null)
+        {
+            throw new InvalidOperationException("php.ini tidak ditemukan dan template php.ini-development/php.ini-production juga tidak ada di " + selectedPhpDir + ".");
+        }
+
+        File.Copy(source, phpIni, false);
+        await AppendActivityAsync("PHP", "Config created", "Created php.ini from " + Path.GetFileName(source));
+    }
+
     private void ResolveRuntimePorts()
     {
         var ports = GetListeningPorts();
@@ -775,8 +836,8 @@ public sealed partial class MainPage : Page
     private Dictionary<string, string> BuildTemplateReplacements()
     {
         var phpApacheDll = Path.Combine(selectedPhpDir, "php8apache2_4.dll");
-        var phpMyAdminDir = Path.Combine(root, @"apps\phpmyadmin");
-        var phpMyAdminAlias = Directory.Exists(phpMyAdminDir)
+        var phpMyAdminDir = ResolvePhpMyAdminRoot();
+        var phpMyAdminAlias = phpMyAdminDir != null
             ? "Alias /phpmyadmin \"" + PortablePath(phpMyAdminDir) + "/\"" + Environment.NewLine +
               "<Directory \"" + PortablePath(phpMyAdminDir) + "\">" + Environment.NewLine +
               "    AllowOverride All" + Environment.NewLine +
@@ -946,6 +1007,17 @@ public sealed partial class MainPage : Page
 ServerRoot "{{APACHE_ROOT}}"
 Listen {{APACHE_PORT}}
 
+LoadModule actions_module modules/mod_actions.so
+LoadModule alias_module modules/mod_alias.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule authz_host_module modules/mod_authz_host.so
+LoadModule autoindex_module modules/mod_autoindex.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule env_module modules/mod_env.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule setenvif_module modules/mod_setenvif.so
 LoadModule php_module "{{PHP_APACHE_DLL}}"
 PHPINIDir "{{PHP_ROOT}}"
 

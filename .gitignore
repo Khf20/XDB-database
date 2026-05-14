@@ -11,3 +11,11 @@ release/
 ui-check*.png
 ui-current*.png
 *.app-bak-*
+
+# Portable stack binaries and user data are local/release artifacts.
+apps/*
+!apps/README.md
+data/*
+!data/.gitkeep
+stack/*
+!stack/README.md
