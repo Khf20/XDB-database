@@ -274,11 +274,26 @@ public sealed partial class MainPage : Page
 
     private static string ResolveDefaultPortableRoot()
     {
+        var candidates = new[]
+        {
+            Environment.GetEnvironmentVariable("XDB_DATABASE_ROOT"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "XDB-database"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XDB-database"),
+            Directory.GetCurrentDirectory()
+        };
+
+        foreach (var candidate in candidates.Where(item => !string.IsNullOrWhiteSpace(item)))
+        {
+            if (LooksLikePortableRoot(candidate!))
+            {
+                return candidate!.TrimEnd('\\');
+            }
+        }
+
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory != null)
         {
-            if (Directory.Exists(Path.Combine(directory.FullName, "stack")) ||
-                Directory.Exists(Path.Combine(directory.FullName, "src")) && File.Exists(Path.Combine(directory.FullName, "build-winui.bat")))
+            if (LooksLikePortableRoot(directory.FullName))
             {
                 return directory.FullName.TrimEnd('\\');
             }
@@ -287,6 +302,19 @@ public sealed partial class MainPage : Page
         }
 
         return AppContext.BaseDirectory.TrimEnd('\\');
+    }
+
+    private static bool LooksLikePortableRoot(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            return false;
+        }
+
+        return Directory.Exists(Path.Combine(path, "stack")) &&
+               Directory.Exists(Path.Combine(path, "config")) &&
+               Directory.Exists(Path.Combine(path, "www")) &&
+               Directory.Exists(Path.Combine(path, "data"));
     }
 
     private string ResolveSelectedPhpDirectory()
