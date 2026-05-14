@@ -43,6 +43,12 @@
             <Setter Property="BorderBrush" Value="#2F3B49" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
+        <Style x:Key="MiniToolButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="52" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
     </Page.Resources>
 
     <Grid>
@@ -119,6 +125,16 @@
                         <TextBlock Style="{StaticResource NavTextStyle}" Text="Tools" />
                     </StackPanel>
                 </Button>
+                <Button
+                    x:Name="SettingsNav"
+                    Click="SettingsNav_Click"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" />
+                        <TextBlock Style="{StaticResource NavTextStyle}" Text="Settings" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
 
             <Border Grid.Row="2" Margin="20" Padding="16" Background="#1C2734" CornerRadius="10">
@@ -152,7 +168,7 @@
                         FontWeight="Bold"
                         Foreground="White"
                         Text="Dashboard" />
-                    <TextBlock Foreground="{StaticResource MutedBrush}" Text="C:\xampp" />
+                    <TextBlock x:Name="PageSubtitle" Foreground="{StaticResource MutedBrush}" Text="C:\xampp" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
@@ -171,6 +187,20 @@
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="14">
+                        <Border
+                            x:Name="XamppValidationBorder"
+                            Background="#3B2620"
+                            BorderBrush="#F05A28"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="16"
+                            Visibility="Collapsed">
+                            <TextBlock
+                                x:Name="XamppValidationText"
+                                Foreground="White"
+                                TextWrapping="Wrap" />
+                        </Border>
+
                         <Border Style="{StaticResource CardBorderStyle}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -189,6 +219,16 @@
                                     Foreground="White"
                                     Text="00:00:00" />
                             </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorderStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock FontSize="20" FontWeight="Bold" Foreground="White" Text="Health Summary" />
+                                <TextBlock x:Name="HealthSummaryText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Text="Checking health..." />
+                                <Border x:Name="PortConflictBorder" Padding="12" Background="#3B2620" BorderBrush="#F05A28" BorderThickness="1" CornerRadius="10" Visibility="Collapsed">
+                                    <TextBlock x:Name="PortConflictText" Foreground="White" TextWrapping="Wrap" />
+                                </Border>
+                            </StackPanel>
                         </Border>
 
                         <Grid ColumnSpacing="14" RowSpacing="14">
@@ -226,13 +266,17 @@
                             </Border>
                         </Grid>
 
-                        <Grid ColumnSpacing="16" RowSpacing="16">
+                        <Grid x:Name="ServiceCardsGrid" ColumnSpacing="16" RowSpacing="16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="ServiceCardColumn2" Width="*" />
                             </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                            <Border Grid.Column="0" MinHeight="230" Style="{StaticResource CardBorderStyle}">
+                            <Border x:Name="ApacheServiceCard" Grid.Column="0" MinHeight="230" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -242,22 +286,25 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="76" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
                                             <TextBlock FontSize="24" FontWeight="Bold" Foreground="White" Text="Apache" TextTrimming="CharacterEllipsis" />
                                             <TextBlock x:Name="ApachePidText" Foreground="{StaticResource MutedBrush}" Text="PID -" />
                                         </StackPanel>
-                                        <Border
-                                            Grid.Column="1"
-                                            Width="76"
-                                            Height="30"
-                                            HorizontalAlignment="Right"
-                                            Padding="8,0"
-                                            Background="#EAF8EF"
-                                            CornerRadius="4">
-                                            <TextBlock x:Name="ApacheStateText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
-                                        </Border>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                            <ProgressRing x:Name="ApacheProgress" Width="24" Height="24" IsActive="False" Visibility="Collapsed" />
+                                            <Border
+                                                MinWidth="92"
+                                                Height="30"
+                                                Padding="10,0"
+                                                Background="#38262B"
+                                                BorderBrush="#7F1D1D"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                                <TextBlock x:Name="ApacheStateText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
+                                            </Border>
+                                        </StackPanel>
                                     </Grid>
                                     <TextBlock
                                         x:Name="ApachePortsText"
@@ -279,7 +326,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Grid.Column="1" MinHeight="230" Style="{StaticResource CardBorderStyle}">
+                            <Border x:Name="MysqlServiceCard" Grid.Column="1" MinHeight="230" Style="{StaticResource CardBorderStyle}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -289,22 +336,25 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="76" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
                                             <TextBlock FontSize="24" FontWeight="Bold" Foreground="White" Text="MySQL / MariaDB" TextTrimming="CharacterEllipsis" />
                                             <TextBlock x:Name="MysqlPidText" Foreground="{StaticResource MutedBrush}" Text="PID -" />
                                         </StackPanel>
-                                        <Border
-                                            Grid.Column="1"
-                                            Width="76"
-                                            Height="30"
-                                            HorizontalAlignment="Right"
-                                            Padding="8,0"
-                                            Background="#EAF8EF"
-                                            CornerRadius="4">
-                                            <TextBlock x:Name="MysqlStateText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
-                                        </Border>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                            <ProgressRing x:Name="MysqlProgress" Width="24" Height="24" IsActive="False" Visibility="Collapsed" />
+                                            <Border
+                                                MinWidth="92"
+                                                Height="30"
+                                                Padding="10,0"
+                                                Background="#38262B"
+                                                BorderBrush="#7F1D1D"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                                <TextBlock x:Name="MysqlStateText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Stopped" />
+                                            </Border>
+                                        </StackPanel>
                                     </Grid>
                                     <TextBlock
                                         x:Name="MysqlPortsText"
@@ -345,6 +395,7 @@
                                         <ComboBoxItem Content="MySQL Error" />
                                         <ComboBoxItem Content="XAMPP Control" />
                                         <ComboBoxItem Content="Apache Access" />
+                                        <ComboBoxItem Content="App Activity" />
                                     </ComboBox>
                                     <Button Click="ReloadLogButton_Click" Content="Reload" />
                                 </StackPanel>
@@ -367,14 +418,40 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <StackPanel Spacing="6">
                                 <TextBlock FontSize="24" FontWeight="Bold" Text="PHP Switcher" />
                                 <TextBlock Foreground="{StaticResource MutedBrush}" Text="Pilih PHP yang dipakai Apache. Setelah switch, restart Apache." />
                             </StackPanel>
-                            <ListBox x:Name="PhpList" Grid.Row="1" />
-                            <StackPanel Grid.Row="2" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="10">
+                            <Grid Grid.Row="1" ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ListBox x:Name="PhpList" Grid.Column="0" SelectionChanged="PhpList_SelectionChanged" />
+                                <Border Grid.Column="1" Padding="14" Background="#1C2734" CornerRadius="10">
+                                    <Grid RowSpacing="8">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock FontWeight="SemiBold" Foreground="White" Text="Preview perubahan" />
+                                        <TextBox
+                                            x:Name="PhpPreviewBox"
+                                            Grid.Row="1"
+                                            AcceptsReturn="True"
+                                            FontFamily="Consolas"
+                                            FontSize="12"
+                                            IsReadOnly="True"
+                                            TextWrapping="NoWrap" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                            <TextBlock x:Name="PhpValidationText" Grid.Row="2" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Text="Pilih versi PHP untuk melihat validasi." />
+                            <StackPanel Grid.Row="3" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="10">
                                 <Button Click="ReloadPhpButton_Click" Content="Reload" />
+                                <Button Click="RollbackPhpButton_Click" Content="Rollback Last Backup" />
                                 <Button Click="UsePhpButton_Click" Content="Use for Apache" />
                             </StackPanel>
                         </Grid>
@@ -382,53 +459,176 @@
                 </Grid>
 
                 <ScrollViewer x:Name="ToolsView" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                    <Grid ColumnSpacing="18" RowSpacing="18">
+                    <Grid x:Name="ToolsGrid" ColumnSpacing="18" RowSpacing="18">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition x:Name="ToolsColumn2" Width="*" />
+                            <ColumnDefinition x:Name="ToolsColumn3" Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="168" />
                             <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
+                            <RowDefinition Height="168" />
                         </Grid.RowDefinitions>
-                        <Button Grid.Row="0" Grid.Column="0" Click="OpenHtdocs_Click" Style="{StaticResource ToolTileStyle}">
+                        <Button x:Name="ToolOpenHtdocs" Grid.Row="0" Grid.Column="0" Click="OpenHtdocs_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8B7;" />
                                 <TextBlock FontSize="22" Text="Open htdocs" />
                             </StackPanel>
                         </Button>
-                        <Button Grid.Row="0" Grid.Column="1" Click="OpenApacheConfig_Click" Style="{StaticResource ToolTileStyle}">
+                        <Button x:Name="ToolApacheConfig" Grid.Row="0" Grid.Column="1" Click="OpenApacheConfig_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE713;" />
                                 <TextBlock FontSize="22" Text="Apache Config" />
                             </StackPanel>
                         </Button>
-                        <Button Grid.Row="0" Grid.Column="2" Click="OpenMysqlData_Click" Style="{StaticResource ToolTileStyle}">
+                        <Button x:Name="ToolMysqlData" Grid.Row="0" Grid.Column="2" Click="OpenMysqlData_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8FC;" />
                                 <TextBlock FontSize="22" Text="MySQL Data" />
                             </StackPanel>
                         </Button>
-                        <Button Grid.Row="1" Grid.Column="0" Click="OpenRoot_Click" Style="{StaticResource ToolTileStyle}">
+                        <Button x:Name="ToolRoot" Grid.Row="1" Grid.Column="0" Click="OpenRoot_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE838;" />
-                                <TextBlock FontSize="22" Text="Open C:\xampp" />
+                                <TextBlock FontSize="22" Text="Open XAMPP Root" TextWrapping="WrapWholeWords" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button Grid.Row="1" Grid.Column="1" Click="PhpMyAdminButton_Click" Style="{StaticResource ToolTileStyle}">
+                        <Button x:Name="ToolPhpMyAdmin" Grid.Row="1" Grid.Column="1" Click="PhpMyAdminButton_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE968;" />
                                 <TextBlock FontSize="22" Text="phpMyAdmin" />
                             </StackPanel>
                         </Button>
-                        <Button Grid.Row="1" Grid.Column="2" Click="OpenDashboard_Click" Style="{StaticResource ToolTileStyle}">
+                        <Button x:Name="ToolServerStatus" Grid.Row="1" Grid.Column="2" Click="OpenDashboard_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xF246;" />
                                 <TextBlock FontSize="22" Text="Server Status" />
                             </StackPanel>
                         </Button>
+                        <Button x:Name="ToolRepairPhpMyAdmin" Grid.Row="2" Grid.Column="0" Click="RepairPhpMyAdminButton_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE90F;" />
+                                <TextBlock FontSize="22" Text="Repair phpMyAdmin" TextWrapping="WrapWholeWords" TextAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolPhpIni" Grid.Row="2" Grid.Column="1" Click="OpenPhpIni_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8A5;" />
+                                <TextBlock FontSize="22" Text="Open php.ini" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolMysqlIni" Grid.Row="2" Grid.Column="2" Click="OpenMysqlIni_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8A5;" />
+                                <TextBlock FontSize="22" Text="Open my.ini" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolHttpdConf" Grid.Row="3" Grid.Column="0" Click="OpenHttpdConf_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE713;" />
+                                <TextBlock FontSize="22" Text="Open httpd.conf" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolVhostsConf" Grid.Row="3" Grid.Column="1" Click="OpenVhostsConf_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE713;" />
+                                <TextBlock FontSize="22" Text="Open vhosts" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolErrorLog" Grid.Row="3" Grid.Column="2" Click="OpenErrorLog_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8A5;" />
+                                <TextBlock FontSize="22" Text="Open error.log" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ToolWindowsServices" Grid.Row="4" Grid.Column="0" Click="OpenWindowsServices_Click" Style="{StaticResource ToolTileStyle}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE950;" />
+                                <TextBlock FontSize="22" Text="Windows Services" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer x:Name="SettingsView" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                    <Border Style="{StaticResource CardBorderStyle}">
+                        <Grid RowSpacing="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Spacing="6">
+                                <TextBlock FontSize="24" FontWeight="Bold" Foreground="White" Text="Application Settings" />
+                                <TextBlock Foreground="{StaticResource MutedBrush}" Text="Konfigurasi disimpan di profil Windows user saat ini." />
+                            </StackPanel>
+
+                            <Grid Grid.Row="1" ColumnSpacing="14" RowSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8">
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="XAMPP root" />
+                                    <TextBox x:Name="XamppRootBox" PlaceholderText="C:\xampp" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="1" Spacing="8">
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Browser" />
+                                    <ComboBox x:Name="BrowserCombo" HorizontalAlignment="Stretch">
+                                        <ComboBoxItem Content="Default" IsSelected="True" />
+                                        <ComboBoxItem Content="Edge" />
+                                        <ComboBoxItem Content="Chrome" />
+                                        <ComboBoxItem Content="Firefox" />
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="8">
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Apache service name" />
+                                    <TextBox x:Name="ApacheServiceBox" PlaceholderText="Apache2.4" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="8">
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="MySQL service names" />
+                                    <TextBox x:Name="MysqlServiceBox" PlaceholderText="mysql;MariaDB" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                                <Button Click="ResetSettingsButton_Click" Content="Reset" />
+                                <Button Background="#F05A28" Click="SaveSettingsButton_Click" Content="Save Settings" Foreground="White" />
+                            </StackPanel>
+
+                            <Border Grid.Row="3" Padding="14" Background="#1C2734" CornerRadius="10">
+                                <StackPanel Spacing="6">
+                                    <TextBlock FontWeight="SemiBold" Foreground="White" Text="Settings file" />
+                                    <TextBlock x:Name="SettingsPathText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="4" Padding="14" Background="#1C2734" CornerRadius="10">
+                                <StackPanel Spacing="6">
+                                    <TextBlock FontWeight="SemiBold" Foreground="White" Text="Activity log" />
+                                    <TextBlock x:Name="ActivityLogPathText" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
                 </ScrollViewer>
             </Grid>
         </Grid>

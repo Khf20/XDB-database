@@ -12,17 +12,24 @@ New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $packageRoot = Join-Path $root 'src\XDBDatabase.WinUI\AppPackages'
-$msix = Get-ChildItem -Path $packageRoot -Recurse -Filter '*.msix' |
-    Where-Object { $_.FullName -notmatch '\\Dependencies\\' -and $_.Name -like '*_x64.msix' } |
+$package = Get-ChildItem -Path $packageRoot -Recurse -Include '*.msixbundle','*.msix' |
+    Where-Object { $_.FullName -notmatch '\\Dependencies\\' -and ($_.Name -like '*.msixbundle' -or $_.Name -like '*_x64.msix') } |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
-if ($msix) {
-    Copy-Item -LiteralPath $msix.FullName -Destination $outDir
+if ($package) {
+    Copy-Item -LiteralPath $package.FullName -Destination $outDir
+    $dependencies = Join-Path $package.DirectoryName 'Dependencies\x64'
+    if (Test-Path -LiteralPath $dependencies) {
+        $dependencyOut = Join-Path $outDir 'Dependencies\x64'
+        New-Item -ItemType Directory -Force -Path $dependencyOut | Out-Null
+        Copy-Item -Path (Join-Path $dependencies '*') -Destination $dependencyOut
+    }
 }
 
 Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination $outDir
 Copy-Item -LiteralPath (Join-Path $root 'CHANGELOG.md') -Destination $outDir
+Copy-Item -LiteralPath (Join-Path $root 'Install-XDB-database.bat') -Destination $outDir
 Copy-Item -LiteralPath (Join-Path $root 'install-winui.bat') -Destination $outDir
 Copy-Item -LiteralPath (Join-Path $root 'install-winui.ps1') -Destination $outDir
 

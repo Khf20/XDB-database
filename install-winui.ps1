@@ -9,27 +9,22 @@ $packageRoot = Join-Path $root 'src\XDBDatabase.WinUI\AppPackages'
 $certSubject = 'CN=XDBDatabase'
 $certName = 'XDB-database Dev Certificate'
 
-$principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    throw 'Run this script from PowerShell as Administrator.'
-}
-
 if ((Test-Path -LiteralPath $project) -and -not $SkipPackage) {
-    dotnet publish $project -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never
+    dotnet publish $project -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Always -p:AppxBundlePlatforms=x64
 }
 
 $searchRoots = @()
 if (Test-Path -LiteralPath $packageRoot) { $searchRoots += $packageRoot }
 $searchRoots += $root
 
-$msix = $searchRoots |
-    ForEach-Object { Get-ChildItem -Path $_ -Recurse -Filter '*.msix' -ErrorAction SilentlyContinue } |
-    Where-Object { $_.FullName -notmatch '\\Dependencies\\' -and $_.Name -like '*_x64.msix' } |
+$package = $searchRoots |
+    ForEach-Object { Get-ChildItem -Path $_ -Recurse -Include '*.msixbundle','*.msix' -ErrorAction SilentlyContinue } |
+    Where-Object { $_.FullName -notmatch '\\Dependencies\\' -and ($_.Name -like '*.msixbundle' -or $_.Name -like '*_x64.msix') } |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
-if (-not $msix) {
-    throw 'MSIX package was not found. Run package-winui.bat first, or place the release MSIX next to this script.'
+if (-not $package) {
+    throw 'MSIX/MSIXBUNDLE package was not found. Run package-winui.bat first, or place the release package next to this script.'
 }
 
 $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe |
@@ -41,7 +36,14 @@ if (-not $signtool) {
     throw 'signtool.exe was not found. Install Windows SDK build tools.'
 }
 
-$cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject } | Select-Object -First 1
+$cert = Get-ChildItem Cert:\CurrentUser\My |
+    Where-Object {
+        $_.Subject -eq $certSubject -and
+        $_.NotAfter -gt (Get-Date) -and
+        ($_.EnhancedKeyUsageList | Where-Object { $_.ObjectId -eq '1.3.6.1.5.5.7.3.3' })
+    } |
+    Sort-Object NotAfter -Descending |
+    Select-Object -First 1
 if (-not $cert) {
     $cert = New-SelfSignedCertificate `
         -Type Custom `
@@ -54,20 +56,26 @@ if (-not $cert) {
 
 $cer = Join-Path $root 'XDBDatabaseDev.cer'
 Export-Certificate -Cert $cert -FilePath $cer -Force | Out-Null
-Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+Import-Certificate -FilePath $cer -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
 
-& $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint $msix.FullName
+& $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint $package.FullName
 if ($LASTEXITCODE -ne 0) { throw 'signtool sign failed.' }
 
-& $signtool.FullName verify /pa $msix.FullName
+& $signtool.FullName verify /pa $package.FullName
 if ($LASTEXITCODE -ne 0) { throw 'signtool verify failed.' }
 
 Get-AppxPackage *XDBDatabase* | Remove-AppxPackage -ErrorAction SilentlyContinue
 Get-AppxPackage |
     Where-Object { $_.Publisher -eq $certSubject -or $_.Name -eq '1B9D8D8D-F4E5-480D-8A36-60A54D175E93' } |
     Remove-AppxPackage -ErrorAction SilentlyContinue
-Add-AppxPackage -Path $msix.FullName
+
+$dependencyRoot = Join-Path $package.DirectoryName 'Dependencies\x64'
+if (Test-Path -LiteralPath $dependencyRoot) {
+    Get-ChildItem -Path $dependencyRoot -Filter '*.msix' |
+        ForEach-Object { Add-AppxPackage -Path $_.FullName -ErrorAction SilentlyContinue }
+}
+
+Add-AppxPackage -Path $package.FullName
 
 $app = Get-StartApps | Where-Object { $_.Name -eq 'XDB-database' -or $_.AppID -like '*XDBDatabase*' } | Select-Object -First 1
 if ($app) {
