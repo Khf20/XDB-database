@@ -321,14 +321,20 @@ public sealed partial class MainPage : Page
     {
         var name = string.IsNullOrWhiteSpace(settings.ActivePhpName) ? "php" : settings.ActivePhpName.Trim();
         var preferred = Path.Combine(stackRoot, name);
-        if (Directory.Exists(preferred) || name.Equals("php", StringComparison.OrdinalIgnoreCase))
+        if (Directory.Exists(preferred) && File.Exists(Path.Combine(preferred, "php.exe")))
         {
             return preferred;
         }
 
-        return Directory.Exists(stackRoot)
-            ? Directory.GetDirectories(stackRoot, "php*").OrderBy(path => path).FirstOrDefault() ?? preferred
-            : preferred;
+        if (!Directory.Exists(stackRoot))
+        {
+            return preferred;
+        }
+
+        return Directory.GetDirectories(stackRoot, "php*")
+            .Where(path => File.Exists(Path.Combine(path, "php.exe")))
+            .OrderBy(path => path)
+            .FirstOrDefault() ?? preferred;
     }
 
     private string ResolveStackComponentRoot(string conventionalFolder, string requiredRelativeFile, string searchPattern)
