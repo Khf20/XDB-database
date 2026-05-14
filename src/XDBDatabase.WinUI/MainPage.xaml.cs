@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,7 +19,7 @@ public sealed partial class MainPage : Page
     private readonly string activityLogFile;
     private readonly MainViewModel ViewModel = new();
     private AppSettings settings;
-    private string root = @"C:\xampp";
+    private string root = "";
     private string apacheServiceName = "Apache2.4";
     private string[] mysqlServiceNames = { "mysql", "MariaDB" };
     private string apacheExe = "";
@@ -34,12 +35,21 @@ public sealed partial class MainPage : Page
     private string xamppControlLog = "";
     private string apacheAccessLog = "";
     private string httpdVhostsConf = "";
-    private string? apacheTransientState;
-    private string? mysqlTransientState;
+    private string stackRoot = "";
+    private string apacheRoot = "";
+    private string mariadbRoot = "";
+    private string phpStackRoot = "";
+    private string selectedPhpDir = "";
+    private string wwwDir = "";
+    private string dataDir = "";
+    private string apacheTemplateFile = "";
+    private string mariadbTemplateFile = "";
+    private ServiceState? apacheTransientState;
+    private ServiceState? mysqlTransientState;
     private bool apacheOperationActive;
     private bool mysqlOperationActive;
     private bool operationBusy;
-    private string? lastPhpBackup;
+    private string? previousPhpName;
     private bool xamppInstallValid;
     private readonly DispatcherTimer timer = new();
     private static readonly HttpClient localHttp = new() { Timeout = TimeSpan.FromMilliseconds(900) };
@@ -53,59 +63,84 @@ public sealed partial class MainPage : Page
 
         InitializeComponent();
         DataContext = ViewModel;
+        PhpList.ItemsSource = ViewModel.PhpInstalls;
+        BindViewModelActions();
 
         Loaded += MainPage_Loaded;
         timer.Interval = TimeSpan.FromSeconds(5);
-        timer.Tick += (_, _) => RefreshStatus();
+        timer.Tick += async (_, _) => await RefreshStatusAsync();
+    }
+
+    private void BindViewModelActions()
+    {
+        ViewModel.RefreshAction = RefreshStatusAsync;
+        ViewModel.StartApacheAction = () => RunBusy("Start Apache", StartApacheAsync);
+        ViewModel.StopApacheAction = () => RunBusy("Stop Apache", StopApacheAsync);
+        ViewModel.RestartApacheAction = () => RunBusy("Restart Apache", async () => { await StopApacheAsync(); await StartApacheAsync(); });
+        ViewModel.StartMysqlAction = () => RunBusy("Start MySQL/MariaDB", StartMysqlAsync);
+        ViewModel.StopMysqlAction = () => RunBusy("Stop MySQL/MariaDB", StopMysqlAsync);
+        ViewModel.RestartMysqlAction = () => RunBusy("Restart MySQL/MariaDB", async () => { await StopMysqlAsync(); await StartMysqlAsync(); });
+        ViewModel.ReloadPhpAction = RefreshPhpListAsync;
+        ViewModel.UsePhpAction = UseSelectedPhpAsync;
+        ViewModel.RollbackPhpAction = RollbackLastPhpBackupAsync;
+        ViewModel.RepairPhpMyAdminAction = () => RunBusy("Repair phpMyAdmin access", RepairPhpMyAdminAccessAsync);
     }
 
     private async void MainPage_Loaded(object sender, RoutedEventArgs e)
     {
         settings = await LoadSettingsAsync();
         ApplySettingsToPaths();
+        EnsurePortableDirectories();
         SyncSettingsView();
         ShowView(DashboardView, "Dashboard");
         UpdateValidationStatus();
-        RefreshPhpList();
-        RefreshStatus();
+        await RefreshPhpListAsync();
+        await RefreshStatusAsync();
         await LoadLogAsync();
-        await AppendActivityAsync("App", "Started", "XDB-database launched. XAMPP root: " + root);
+        await AppendActivityAsync("App", "Started", "XDB-database launched. Portable root: " + root);
         timer.Start();
     }
 
     private void DashboardNav_Click(object sender, RoutedEventArgs e) => ShowView(DashboardView, "Dashboard");
     private async void LogsNav_Click(object sender, RoutedEventArgs e) { ShowView(LogsView, "Logs"); await LoadLogAsync(); }
-    private void PhpNav_Click(object sender, RoutedEventArgs e) { ShowView(PhpView, "PHP Switcher"); RefreshPhpList(); }
+    private async void PhpNav_Click(object sender, RoutedEventArgs e) { ShowView(PhpView, "PHP Switcher"); await RefreshPhpListAsync(); }
     private void ToolsNav_Click(object sender, RoutedEventArgs e) => ShowView(ToolsView, "Tools");
     private void SettingsNav_Click(object sender, RoutedEventArgs e) => ShowView(SettingsView, "Settings");
-    private void RefreshButton_Click(object sender, RoutedEventArgs e) => RefreshStatus();
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e) => await ViewModel.RefreshCommand.ExecuteAsync(null);
     private void PhpMyAdminButton_Click(object sender, RoutedEventArgs e) => OpenUrl("http://localhost/phpmyadmin/");
     private void OpenDashboard_Click(object sender, RoutedEventArgs e) => OpenUrl("http://localhost/dashboard/");
-    private void OpenHtdocs_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(root, "htdocs"));
-    private void OpenApacheConfig_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(root, @"apache\conf"));
-    private void OpenMysqlData_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(root, @"mysql\data"));
+    private void OpenHtdocs_Click(object sender, RoutedEventArgs e) => OpenPath(wwwDir);
+    private void OpenApacheConfig_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(apacheRoot, "conf"));
+    private void OpenMysqlData_Click(object sender, RoutedEventArgs e) => OpenPath(dataDir);
     private void OpenRoot_Click(object sender, RoutedEventArgs e) => OpenPath(root);
-    private void OpenPhpIni_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(GetApachePhpDir(), "php.ini"));
+    private async void OpenPhpIni_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(await GetApachePhpDirAsync(), "php.ini"));
     private void OpenMysqlIni_Click(object sender, RoutedEventArgs e) => OpenPath(mysqlIni);
     private void OpenHttpdConf_Click(object sender, RoutedEventArgs e) => OpenPath(apacheConf);
     private void OpenVhostsConf_Click(object sender, RoutedEventArgs e) => OpenPath(httpdVhostsConf);
     private void OpenErrorLog_Click(object sender, RoutedEventArgs e) => OpenPath(apacheErrorLog);
-    private void OpenWindowsServices_Click(object sender, RoutedEventArgs e) => Process.Start(new ProcessStartInfo("services.msc") { UseShellExecute = true });
+    private void OpenWindowsServices_Click(object sender, RoutedEventArgs e) => OpenPortableTerminal();
     private async void ReloadLogButton_Click(object sender, RoutedEventArgs e) => await LoadLogAsync();
-    private void ReloadPhpButton_Click(object sender, RoutedEventArgs e) => RefreshPhpList();
+    private async void ReloadPhpButton_Click(object sender, RoutedEventArgs e) => await ViewModel.ReloadPhpCommand.ExecuteAsync(null);
     private async void LogCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => await LoadLogAsync();
-    private void PhpList_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdatePhpPreview();
+    private void PhpList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (PhpList.SelectedItem is PhpInstall selected)
+        {
+            ViewModel.SelectedPhpInstall = selected;
+        }
+        UpdatePhpPreview();
+    }
     private async void SaveSettingsButton_Click(object sender, RoutedEventArgs e) => await SaveSettingsFromViewAsync();
     private async void ResetSettingsButton_Click(object sender, RoutedEventArgs e) => await ResetSettingsAsync();
-    private async void RepairPhpMyAdminButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Repair phpMyAdmin access", RepairPhpMyAdminAccessAsync);
-    private async void RollbackPhpButton_Click(object sender, RoutedEventArgs e) => await RollbackLastPhpBackupAsync();
+    private async void RepairPhpMyAdminButton_Click(object sender, RoutedEventArgs e) => await ViewModel.RepairPhpMyAdminCommand.ExecuteAsync(null);
+    private async void RollbackPhpButton_Click(object sender, RoutedEventArgs e) => await ViewModel.RollbackPhpCommand.ExecuteAsync(null);
 
-    private async void StartApacheButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Start Apache", StartApacheAsync);
-    private async void StopApacheButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Stop Apache", StopApacheAsync);
-    private async void RestartApacheButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Restart Apache", async () => { await StopApacheAsync(); await StartApacheAsync(); });
-    private async void StartMysqlButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Start MySQL/MariaDB", StartMysqlAsync);
-    private async void StopMysqlButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Stop MySQL/MariaDB", StopMysqlAsync);
-    private async void RestartMysqlButton_Click(object sender, RoutedEventArgs e) => await RunBusy("Restart MySQL/MariaDB", async () => { await StopMysqlAsync(); await StartMysqlAsync(); });
+    private async void StartApacheButton_Click(object sender, RoutedEventArgs e) => await ViewModel.StartApacheCommand.ExecuteAsync(null);
+    private async void StopApacheButton_Click(object sender, RoutedEventArgs e) => await ViewModel.StopApacheCommand.ExecuteAsync(null);
+    private async void RestartApacheButton_Click(object sender, RoutedEventArgs e) => await ViewModel.RestartApacheCommand.ExecuteAsync(null);
+    private async void StartMysqlButton_Click(object sender, RoutedEventArgs e) => await ViewModel.StartMysqlCommand.ExecuteAsync(null);
+    private async void StopMysqlButton_Click(object sender, RoutedEventArgs e) => await ViewModel.StopMysqlCommand.ExecuteAsync(null);
+    private async void RestartMysqlButton_Click(object sender, RoutedEventArgs e) => await ViewModel.RestartMysqlCommand.ExecuteAsync(null);
 
     private void ShowView(FrameworkElement activeView, string title)
     {
@@ -141,7 +176,7 @@ public sealed partial class MainPage : Page
             SetBusy(true);
             operationBusy = false;
             UpdateValidationStatus();
-            RefreshStatus();
+            await RefreshStatusAsync();
             await LoadLogAsync();
         }
     }
@@ -151,24 +186,24 @@ public sealed partial class MainPage : Page
         if (actionName.Contains("Apache", StringComparison.OrdinalIgnoreCase))
         {
             apacheOperationActive = active;
-            apacheTransientState = failed ? "Error" : active ? OperationLabel(actionName) : null;
+            apacheTransientState = failed ? ServiceState.Error : active ? OperationState(actionName) : null;
         }
 
         if (actionName.Contains("MySQL", StringComparison.OrdinalIgnoreCase) ||
             actionName.Contains("MariaDB", StringComparison.OrdinalIgnoreCase))
         {
             mysqlOperationActive = active;
-            mysqlTransientState = failed ? "Error" : active ? OperationLabel(actionName) : null;
+            mysqlTransientState = failed ? ServiceState.Error : active ? OperationState(actionName) : null;
         }
     }
 
-    private static string OperationLabel(string actionName)
+    private static ServiceState OperationState(string actionName)
     {
-        if (actionName.Contains("Start", StringComparison.OrdinalIgnoreCase)) return "Starting";
-        if (actionName.Contains("Stop", StringComparison.OrdinalIgnoreCase)) return "Stopping";
-        if (actionName.Contains("Restart", StringComparison.OrdinalIgnoreCase)) return "Restarting";
-        if (actionName.Contains("Repair", StringComparison.OrdinalIgnoreCase)) return "Repairing";
-        return "Working";
+        if (actionName.Contains("Start", StringComparison.OrdinalIgnoreCase)) return ServiceState.Starting;
+        if (actionName.Contains("Stop", StringComparison.OrdinalIgnoreCase)) return ServiceState.Stopping;
+        if (actionName.Contains("Restart", StringComparison.OrdinalIgnoreCase)) return ServiceState.Restarting;
+        if (actionName.Contains("Repair", StringComparison.OrdinalIgnoreCase)) return ServiceState.Repairing;
+        return ServiceState.Starting;
     }
 
     private void SetBusy(bool enabled)
@@ -206,23 +241,82 @@ public sealed partial class MainPage : Page
 
     private void ApplySettingsToPaths()
     {
-        root = string.IsNullOrWhiteSpace(settings.XamppRoot) ? @"C:\xampp" : settings.XamppRoot.Trim().TrimEnd('\\');
+        root = string.IsNullOrWhiteSpace(settings.XamppRoot) ? ResolveDefaultPortableRoot() : settings.XamppRoot.Trim().TrimEnd('\\');
         apacheServiceName = string.IsNullOrWhiteSpace(settings.ApacheServiceName) ? "Apache2.4" : settings.ApacheServiceName.Trim();
         mysqlServiceNames = ParseServiceNames(settings.MysqlServiceNames);
 
-        apacheExe = Path.Combine(root, @"apache\bin\httpd.exe");
-        apacheConf = Path.Combine(root, @"apache\conf\httpd.conf");
-        xamppConf = Path.Combine(root, @"apache\conf\extra\httpd-xampp.conf");
-        mysqlExe = Path.Combine(root, @"mysql\bin\mysqld.exe");
-        mysqlAdminExe = Path.Combine(root, @"mysql\bin\mysqladmin.exe");
-        mysqlClientExe = Path.Combine(root, @"mysql\bin\mysql.exe");
-        mysqlIni = Path.Combine(root, @"mysql\bin\my.ini");
-        phpExe = Path.Combine(root, @"php\php.exe");
-        apacheErrorLog = Path.Combine(root, @"apache\logs\error.log");
-        mysqlErrorLog = Path.Combine(root, @"mysql\data\mysql_error.log");
-        xamppControlLog = Path.Combine(root, "xampp-control.log");
-        apacheAccessLog = Path.Combine(root, @"apache\logs\access.log");
-        httpdVhostsConf = Path.Combine(root, @"apache\conf\extra\httpd-vhosts.conf");
+        stackRoot = Path.Combine(root, "stack");
+        apacheRoot = Path.Combine(stackRoot, "apache");
+        mariadbRoot = Path.Combine(stackRoot, "mariadb");
+        phpStackRoot = stackRoot;
+        wwwDir = Path.Combine(root, "www");
+        dataDir = Path.Combine(root, "data");
+        selectedPhpDir = ResolveSelectedPhpDirectory();
+
+        apacheExe = Path.Combine(apacheRoot, @"bin\httpd.exe");
+        apacheConf = Path.Combine(apacheRoot, @"conf\httpd.conf");
+        xamppConf = Path.Combine(apacheRoot, @"conf\extra\httpd-xampp.conf");
+        mysqlExe = Path.Combine(mariadbRoot, @"bin\mysqld.exe");
+        mysqlAdminExe = Path.Combine(mariadbRoot, @"bin\mysqladmin.exe");
+        mysqlClientExe = Path.Combine(mariadbRoot, @"bin\mysql.exe");
+        mysqlIni = Path.Combine(mariadbRoot, "my.ini");
+        phpExe = Path.Combine(selectedPhpDir, "php.exe");
+        apacheErrorLog = Path.Combine(apacheRoot, @"logs\error.log");
+        mysqlErrorLog = Path.Combine(dataDir, "mysql_error.log");
+        xamppControlLog = activityLogFile;
+        apacheAccessLog = Path.Combine(apacheRoot, @"logs\access.log");
+        httpdVhostsConf = Path.Combine(apacheRoot, @"conf\extra\httpd-vhosts.conf");
+        apacheTemplateFile = Path.Combine(root, @"config\httpd.template.conf");
+        mariadbTemplateFile = Path.Combine(root, @"config\my.template.ini");
+    }
+
+    private static string ResolveDefaultPortableRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            if (Directory.Exists(Path.Combine(directory.FullName, "stack")) ||
+                Directory.Exists(Path.Combine(directory.FullName, "src")) && File.Exists(Path.Combine(directory.FullName, "build-winui.bat")))
+            {
+                return directory.FullName.TrimEnd('\\');
+            }
+
+            directory = directory.Parent;
+        }
+
+        return AppContext.BaseDirectory.TrimEnd('\\');
+    }
+
+    private string ResolveSelectedPhpDirectory()
+    {
+        var name = string.IsNullOrWhiteSpace(settings.ActivePhpName) ? "php" : settings.ActivePhpName.Trim();
+        var preferred = Path.Combine(stackRoot, name);
+        if (Directory.Exists(preferred) || name.Equals("php", StringComparison.OrdinalIgnoreCase))
+        {
+            return preferred;
+        }
+
+        return Directory.Exists(stackRoot)
+            ? Directory.GetDirectories(stackRoot, "php*").OrderBy(path => path).FirstOrDefault() ?? preferred
+            : preferred;
+    }
+
+    private void EnsurePortableDirectories()
+    {
+        foreach (var directory in new[]
+        {
+            root,
+            stackRoot,
+            wwwDir,
+            dataDir,
+            Path.Combine(root, "config"),
+            Path.Combine(apacheRoot, "conf"),
+            Path.Combine(apacheRoot, "logs"),
+            Path.Combine(mariadbRoot, "logs")
+        })
+        {
+            Directory.CreateDirectory(directory);
+        }
     }
 
     private static string[] ParseServiceNames(string value)
@@ -236,7 +330,7 @@ public sealed partial class MainPage : Page
 
     private void SyncSettingsView()
     {
-        XamppRootBox.Text = settings.XamppRoot;
+        XamppRootBox.Text = root;
         ApacheServiceBox.Text = settings.ApacheServiceName;
         MysqlServiceBox.Text = settings.MysqlServiceNames;
         BrowserCombo.SelectedIndex = settings.Browser switch
@@ -246,23 +340,24 @@ public sealed partial class MainPage : Page
             "Firefox" => 3,
             _ => 0
         };
-        ViewModel.SetSettings(settings.XamppRoot, settings.ApacheServiceName, settings.MysqlServiceNames, settings.Browser, settingsFile, activityLogFile);
+        ViewModel.SetSettings(root, settings.ApacheServiceName, settings.MysqlServiceNames, settings.Browser, settingsFile, activityLogFile);
     }
 
     private async Task SaveSettingsFromViewAsync()
     {
-        settings.XamppRoot = string.IsNullOrWhiteSpace(XamppRootBox.Text) ? @"C:\xampp" : XamppRootBox.Text.Trim().TrimEnd('\\');
+        settings.XamppRoot = string.IsNullOrWhiteSpace(XamppRootBox.Text) ? ResolveDefaultPortableRoot() : XamppRootBox.Text.Trim().TrimEnd('\\');
         settings.ApacheServiceName = string.IsNullOrWhiteSpace(ApacheServiceBox.Text) ? "Apache2.4" : ApacheServiceBox.Text.Trim();
         settings.MysqlServiceNames = string.IsNullOrWhiteSpace(MysqlServiceBox.Text) ? "mysql;MariaDB" : MysqlServiceBox.Text.Trim();
         settings.Browser = (BrowserCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Default";
         ApplySettingsToPaths();
+        EnsurePortableDirectories();
         await SaveSettingsAsync();
-        await AppendActivityAsync("Settings", "Saved", "XAMPP root: " + root);
+        await AppendActivityAsync("Settings", "Saved", "Portable root: " + root);
         UpdateValidationStatus();
-        RefreshPhpList();
-        RefreshStatus();
+        await RefreshPhpListAsync();
+        await RefreshStatusAsync();
         await LoadLogAsync();
-        ViewModel.SetSettings(settings.XamppRoot, settings.ApacheServiceName, settings.MysqlServiceNames, settings.Browser, settingsFile, activityLogFile);
+        ViewModel.SetSettings(root, settings.ApacheServiceName, settings.MysqlServiceNames, settings.Browser, settingsFile, activityLogFile);
         await ShowMessageAsync("Settings saved", "Pengaturan sudah disimpan.");
     }
 
@@ -270,11 +365,12 @@ public sealed partial class MainPage : Page
     {
         settings = new AppSettings();
         ApplySettingsToPaths();
+        EnsurePortableDirectories();
         await SaveSettingsAsync();
         SyncSettingsView();
         await AppendActivityAsync("Settings", "Reset", "Settings restored to defaults.");
         UpdateValidationStatus();
-        RefreshStatus();
+        await RefreshStatusAsync();
         await ShowMessageAsync("Settings reset", "Pengaturan dikembalikan ke default.");
     }
 
@@ -299,8 +395,8 @@ public sealed partial class MainPage : Page
         xamppInstallValid = missing.Count == 0;
         XamppValidationBorder.Visibility = xamppInstallValid ? Visibility.Collapsed : Visibility.Visible;
         ViewModel.XamppValidationText = xamppInstallValid
-            ? "XAMPP installation looks good."
-            : "XAMPP tidak lengkap di " + root + ". Missing: " + string.Join(", ", missing) + ". Buka Settings untuk mengubah lokasi XAMPP.";
+            ? "Portable stack looks good."
+            : "Portable stack belum lengkap di " + root + ". Missing: " + string.Join(", ", missing) + ". Isi folder stack/apache, stack/mariadb, stack/php, www, dan data.";
     }
 
     private IEnumerable<string> GetMissingXamppItems()
@@ -308,32 +404,34 @@ public sealed partial class MainPage : Page
         if (!Directory.Exists(root)) yield return root;
         foreach (var item in new[]
         {
-            Path.Combine(root, "apache"),
-            Path.Combine(root, "mysql"),
-            Path.Combine(root, "php"),
-            Path.Combine(root, "htdocs")
+            stackRoot,
+            apacheRoot,
+            mariadbRoot,
+            selectedPhpDir,
+            wwwDir,
+            dataDir
         })
         {
             if (!Directory.Exists(item)) yield return item;
         }
 
-        foreach (var file in new[] { apacheExe, apacheConf, xamppConf, mysqlExe, phpExe })
+        foreach (var file in new[] { apacheExe, mysqlExe, phpExe })
         {
             if (!File.Exists(file)) yield return file;
         }
     }
 
-    private void RefreshStatus()
+    private async Task RefreshStatusAsync()
     {
         UpdateValidationStatus();
-        var state = GetState();
+        var state = await GetStateAsync();
         ApacheVersionText.Text = state.ApacheVersion;
         ApachePhpText.Text = state.ApachePhpVersion;
         PhpCliText.Text = state.PhpCliVersion;
         MariaDbText.Text = state.MysqlVersion;
 
-        SetStateText(ApacheStateText, apacheTransientState ?? (state.ApacheRunning ? "Running" : "Stopped"));
-        SetStateText(MysqlStateText, mysqlTransientState ?? (state.MysqlRunning ? "Running" : "Stopped"));
+        SetStateText(ApacheStateText, apacheTransientState ?? (state.ApacheRunning ? ServiceState.Running : ServiceState.Stopped));
+        SetStateText(MysqlStateText, mysqlTransientState ?? (state.MysqlRunning ? ServiceState.Running : ServiceState.Stopped));
         ApacheProgress.IsActive = apacheOperationActive;
         ApacheProgress.Visibility = apacheOperationActive ? Visibility.Visible : Visibility.Collapsed;
         MysqlProgress.IsActive = mysqlOperationActive;
@@ -362,22 +460,22 @@ public sealed partial class MainPage : Page
 
         var runningCount = (state.ApacheRunning ? 1 : 0) + (state.MysqlRunning ? 1 : 0);
         ViewModel.SetServiceSummary(runningCount, DateTime.Now);
-        UpdateHealthSummary(state);
+        await UpdateHealthSummaryAsync(state);
     }
 
-    private void SetStateText(TextBlock label, string state)
+    private void SetStateText(TextBlock label, ServiceState state)
     {
-        label.Text = state;
+        label.Text = state.ToString();
 
         var bgResource = "BadgeStoppedBg";
         var textResource = "BadgeStoppedText";
 
-        if (state == "Running")
+        if (state == ServiceState.Running)
         {
             bgResource = "BadgeRunningBg";
             textResource = "BadgeRunningText";
         }
-        else if (state is "Starting" or "Stopping" or "Restarting" or "Repairing")
+        else if (state is ServiceState.Starting or ServiceState.Stopping or ServiceState.Restarting or ServiceState.Repairing)
         {
             bgResource = "BadgeWorkingBg";
             textResource = "BadgeWorkingText";
@@ -413,7 +511,7 @@ public sealed partial class MainPage : Page
         return new SolidColorBrush(Colors.Transparent);
     }
 
-    private void UpdateHealthSummary(XamppState state)
+    private async Task UpdateHealthSummaryAsync(XamppState state)
     {
         var items = new List<string>
         {
@@ -425,7 +523,7 @@ public sealed partial class MainPage : Page
         var phpCli = ExtractPhpVersion(state.PhpCliVersion);
         items.Add(!string.IsNullOrWhiteSpace(phpApache) && phpApache == phpCli ? "PHP Apache = PHP CLI" : "PHP Apache != PHP CLI");
 
-        var phpMyAdminStatus = GetPhpMyAdminHealth(state.ApacheRunning);
+        var phpMyAdminStatus = await GetPhpMyAdminHealthAsync(state.ApacheRunning);
         items.Add(phpMyAdminStatus);
 
         HealthSummaryText.Text = string.Join("   |   ", items);
@@ -449,12 +547,12 @@ public sealed partial class MainPage : Page
         return match.Success ? match.Groups[1].Value : "";
     }
 
-    private string GetPhpMyAdminHealth(bool apacheRunning)
+    private async Task<string> GetPhpMyAdminHealthAsync(bool apacheRunning)
     {
         if (!apacheRunning) return "phpMyAdmin offline";
         try
         {
-            using var response = localHttp.GetAsync("http://localhost/phpmyadmin/").GetAwaiter().GetResult();
+            using var response = await localHttp.GetAsync("http://localhost/phpmyadmin/");
             return response.StatusCode == HttpStatusCode.Forbidden ? "phpMyAdmin Forbidden" : "phpMyAdmin OK";
         }
         catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
@@ -469,19 +567,17 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private XamppState GetState()
+    private async Task<XamppState> GetStateAsync()
     {
         var ports = GetListeningPorts();
         var httpd = GetProcesses("httpd");
         var mysqld = GetProcesses("mysqld");
-        var apacheServiceRunning = IsServiceRunning(apacheServiceName);
-        var mysqlServiceRunning = mysqlServiceNames.Any(IsServiceRunning);
-        var phpDir = GetApachePhpDir();
+        var phpDir = await GetApachePhpDirAsync();
         var apachePhpExe = Path.Combine(phpDir, "php.exe");
         return new XamppState
         {
-            ApacheRunning = httpd.Count > 0 || apacheServiceRunning,
-            MysqlRunning = mysqld.Count > 0 || mysqlServiceRunning,
+            ApacheRunning = httpd.Count > 0,
+            MysqlRunning = mysqld.Count > 0,
             ApachePids = httpd.Select(p => p.Id).ToList(),
             MysqlPids = mysqld.Select(p => p.Id).ToList(),
             Port80 = FormatPort(ports, 80),
@@ -612,49 +708,107 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private string GetApachePhpDir()
+    private async Task<string> GetApachePhpDirAsync()
     {
-        if (!File.Exists(xamppConf)) return Path.Combine(root, "php");
-        var content = Task.Run(() => File.ReadAllTextAsync(xamppConf)).GetAwaiter().GetResult();
+        if (!File.Exists(apacheConf)) return selectedPhpDir;
+        var content = await File.ReadAllTextAsync(apacheConf);
         var match = Regex.Match(content, "LoadModule\\s+php_module\\s+\"([^\"]+php8apache2_4\\.dll)\"", RegexOptions.IgnoreCase);
-        if (match.Success) return Path.GetDirectoryName(match.Groups[1].Value.Replace('/', '\\')) ?? Path.Combine(root, "php");
-        return Path.Combine(root, "php");
+        if (match.Success) return Path.GetDirectoryName(match.Groups[1].Value.Replace('/', '\\')) ?? selectedPhpDir;
+        return selectedPhpDir;
+    }
+
+    private async Task PreparePortableConfigurationAsync()
+    {
+        EnsurePortableDirectories();
+        EnsurePortableBinaryExists(apacheExe, "Apache binary belum ada. Ekstrak Apache Lounge ke stack\\apache.");
+        EnsurePortableBinaryExists(mysqlExe, "MariaDB binary belum ada. Ekstrak MariaDB portable ke stack\\mariadb.");
+        EnsurePortableBinaryExists(phpExe, "PHP binary belum ada. Ekstrak PHP for Windows ke " + selectedPhpDir + ".");
+
+        if (!File.Exists(apacheTemplateFile))
+        {
+            await File.WriteAllTextAsync(apacheTemplateFile, DefaultApacheTemplate);
+        }
+
+        if (!File.Exists(mariadbTemplateFile))
+        {
+            await File.WriteAllTextAsync(mariadbTemplateFile, DefaultMariaDbTemplate);
+        }
+
+        var replacements = BuildTemplateReplacements();
+        var apacheTemplate = await File.ReadAllTextAsync(apacheTemplateFile);
+        var mariadbTemplate = await File.ReadAllTextAsync(mariadbTemplateFile);
+
+        await File.WriteAllTextAsync(apacheConf, RenderTemplate(apacheTemplate, replacements));
+        await File.WriteAllTextAsync(mysqlIni, RenderTemplate(mariadbTemplate, replacements));
+    }
+
+    private void EnsurePortableBinaryExists(string path, string message)
+    {
+        if (!File.Exists(path))
+        {
+            throw new InvalidOperationException(message + Environment.NewLine + path);
+        }
+    }
+
+    private Dictionary<string, string> BuildTemplateReplacements()
+    {
+        var phpApacheDll = Path.Combine(selectedPhpDir, "php8apache2_4.dll");
+        return new Dictionary<string, string>
+        {
+            ["APP_ROOT"] = PortablePath(root),
+            ["STACK_ROOT"] = PortablePath(stackRoot),
+            ["APACHE_ROOT"] = PortablePath(apacheRoot),
+            ["MARIADB_ROOT"] = PortablePath(mariadbRoot),
+            ["PHP_ROOT"] = PortablePath(selectedPhpDir),
+            ["PHP_APACHE_DLL"] = PortablePath(phpApacheDll),
+            ["WWW_ROOT"] = PortablePath(wwwDir),
+            ["DATA_DIR"] = PortablePath(dataDir),
+            ["APACHE_LOGS"] = PortablePath(Path.Combine(apacheRoot, "logs"))
+        };
+    }
+
+    private static string RenderTemplate(string template, Dictionary<string, string> replacements)
+    {
+        foreach (var item in replacements)
+        {
+            template = template.Replace("{{" + item.Key + "}}", item.Value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return template;
+    }
+
+    private static string PortablePath(string path) => path.Replace('\\', '/');
+
+    private string BuildPortablePath(string phpDir)
+    {
+        var parts = new[]
+        {
+            phpDir,
+            Path.Combine(apacheRoot, "bin"),
+            Path.Combine(mariadbRoot, "bin"),
+            Environment.GetEnvironmentVariable("PATH") ?? ""
+        };
+        return string.Join(Path.PathSeparator, parts.Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 
     private async Task StartApacheAsync()
     {
-        if (IsXamppServiceInstalled(apacheServiceName))
+        await PreparePortableConfigurationAsync();
+        var phpDir = await GetApachePhpDirAsync();
+        var psi = new ProcessStartInfo(apacheExe, "-f \"" + apacheConf + "\" -d \"" + apacheRoot + "\"")
         {
-            await RunElevatedScAndWaitAsync("start " + apacheServiceName, "Start Apache service");
-            await Task.Delay(1800);
-            return;
-        }
-
-        var phpDir = GetApachePhpDir();
-        var psi = new ProcessStartInfo(apacheExe, "-f \"" + apacheConf + "\"")
-        {
-            WorkingDirectory = root,
+            WorkingDirectory = apacheRoot,
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        psi.EnvironmentVariables["PATH"] = phpDir + ";" + Path.Combine(root, @"apache\bin") + ";" + Environment.GetEnvironmentVariable("PATH");
-        psi.EnvironmentVariables["OPENSSL_CONF"] = Path.Combine(root, @"apache\conf\openssl.cnf");
+        psi.EnvironmentVariables["PATH"] = BuildPortablePath(phpDir);
+        psi.EnvironmentVariables["OPENSSL_CONF"] = Path.Combine(apacheRoot, @"conf\openssl.cnf");
         await Task.Run(() => Process.Start(psi));
         await Task.Delay(1800);
     }
 
     private async Task StopApacheAsync()
     {
-        if (IsXamppServiceInstalled(apacheServiceName))
-        {
-            await RunElevatedScAndWaitAsync("stop " + apacheServiceName, "Stop Apache service");
-            if (!await WaitUntilAsync(() => !IsServiceRunning(apacheServiceName), TimeSpan.FromSeconds(12)))
-            {
-                throw new InvalidOperationException("Apache service belum berhenti setelah timeout. Buka Services Windows dan cek Apache2.4.");
-            }
-            return;
-        }
-
         await Task.Run(() => RunCapture(apacheExe, "-k shutdown -f \"" + apacheConf + "\""));
         await Task.Delay(700);
         foreach (var p in GetProcesses("httpd"))
@@ -662,81 +816,6 @@ public sealed partial class MainPage : Page
             try { p.Kill(); } catch { }
         }
         await Task.Delay(400);
-    }
-
-    private bool IsServiceInstalled(string serviceName)
-    {
-        var output = RunCapture("sc.exe", "query " + serviceName);
-        return output.Contains("SERVICE_NAME:", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool IsXamppServiceInstalled(string serviceName)
-    {
-        if (!IsServiceInstalled(serviceName)) return false;
-        var config = RunCapture("sc.exe", "qc " + serviceName).Replace('/', '\\');
-        return config.Contains(root + "\\", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool IsServiceRunning(string serviceName)
-    {
-        if (!IsXamppServiceInstalled(serviceName)) return false;
-        var output = RunCapture("sc.exe", "query " + serviceName);
-        return output.Contains("STATE", StringComparison.OrdinalIgnoreCase) &&
-               output.Contains("RUNNING", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private string? GetInstalledService(params string[] serviceNames)
-    {
-        return serviceNames.FirstOrDefault(IsXamppServiceInstalled);
-    }
-
-    private async Task RunElevatedScAndWaitAsync(string scArguments, string actionName)
-    {
-        var powershell = ResolvePowerShellPath();
-        if (powershell == null)
-        {
-            throw new InvalidOperationException("Windows PowerShell tidak ditemukan. Sistem Windows ini mungkin dimodifikasi atau komponen PowerShell dihapus, jadi service tidak bisa dikontrol otomatis.");
-        }
-
-        var scExe = ResolveExecutablePath("sc.exe");
-        if (scExe == null)
-        {
-            throw new InvalidOperationException("sc.exe tidak ditemukan di Windows. Aplikasi tidak bisa mengontrol service Apache/MySQL tanpa komponen Service Control Windows.");
-        }
-
-        try
-        {
-            var command = "& '" + scExe.Replace("'", "''") + "' " + scArguments + "; exit $LASTEXITCODE";
-            var process = Process.Start(new ProcessStartInfo(powershell, "-NoProfile -ExecutionPolicy Bypass -Command \"" + command.Replace("\"", "`\"") + "\"")
-            {
-                UseShellExecute = true,
-                Verb = "runas",
-                WindowStyle = ProcessWindowStyle.Hidden
-            });
-            if (process == null) throw new InvalidOperationException(actionName + " gagal dijalankan.");
-            try
-            {
-                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
-            }
-            catch (TimeoutException)
-            {
-                throw new TimeoutException(actionName + " timeout setelah 30 detik.");
-            }
-            if (process.ExitCode != 0)
-            {
-                throw new InvalidOperationException(actionName + " gagal. Exit code: " + process.ExitCode + ".");
-            }
-        }
-        catch (System.ComponentModel.Win32Exception ex)
-        {
-            throw new InvalidOperationException("Aksi ini membutuhkan izin Administrator. Setujui prompt UAC Windows, lalu coba lagi. Detail: " + ex.Message, ex);
-        }
-    }
-
-    private static string? ResolvePowerShellPath()
-    {
-        var systemPowerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"WindowsPowerShell\v1.0\powershell.exe");
-        return File.Exists(systemPowerShell) ? systemPowerShell : ResolveExecutablePath("powershell.exe");
     }
 
     private static string? ResolveExecutablePath(string executable)
@@ -756,38 +835,21 @@ public sealed partial class MainPage : Page
 
     private async Task StartMysqlAsync()
     {
-        var service = GetInstalledService(mysqlServiceNames);
-        if (service != null)
-        {
-            await RunElevatedScAndWaitAsync("start " + service, "Start MySQL/MariaDB service");
-            await Task.Delay(1800);
-            return;
-        }
-
+        await PreparePortableConfigurationAsync();
         var psi = new ProcessStartInfo(mysqlExe, "--defaults-file=\"" + mysqlIni + "\" --standalone")
         {
-            WorkingDirectory = root,
+            WorkingDirectory = mariadbRoot,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        psi.EnvironmentVariables["PATH"] = BuildPortablePath(selectedPhpDir);
         await Task.Run(() => Process.Start(psi));
         await Task.Delay(1800);
     }
 
     private async Task StopMysqlAsync()
     {
-        var service = GetInstalledService(mysqlServiceNames);
-        if (service != null && IsServiceRunning(service))
-        {
-            await RunElevatedScAndWaitAsync("stop " + service, "Stop MySQL/MariaDB service");
-            if (!await WaitUntilAsync(() => !IsServiceRunning(service), TimeSpan.FromSeconds(12)))
-            {
-                throw new InvalidOperationException("MySQL/MariaDB service belum berhenti setelah timeout.");
-            }
-            return;
-        }
-
-        var result = await Task.Run(() => RunCaptureResult(mysqlAdminExe, "--user=root shutdown", 15000));
+        var result = await Task.Run(() => RunCaptureResult(mysqlAdminExe, "--user=root --protocol=tcp --port=3306 shutdown", 15000));
         if (await WaitUntilAsync(() => GetProcesses("mysqld").Count == 0, TimeSpan.FromSeconds(12)))
         {
             return;
@@ -817,6 +879,43 @@ public sealed partial class MainPage : Page
         value = string.IsNullOrWhiteSpace(value) ? "No output." : value.Trim();
         return value.Length <= 800 ? value : value.Substring(0, 800) + "...";
     }
+
+    private const string DefaultApacheTemplate = """
+ServerRoot "{{APACHE_ROOT}}"
+Listen 80
+
+LoadModule php_module "{{PHP_APACHE_DLL}}"
+PHPINIDir "{{PHP_ROOT}}"
+
+ServerName localhost:80
+DocumentRoot "{{WWW_ROOT}}"
+DirectoryIndex index.php index.html
+
+<Directory "{{WWW_ROOT}}">
+    Options Indexes FollowSymLinks Includes ExecCGI
+    AllowOverride All
+    Require all granted
+</Directory>
+
+ErrorLog "{{APACHE_LOGS}}/error.log"
+CustomLog "{{APACHE_LOGS}}/access.log" common
+TypesConfig conf/mime.types
+AddType application/x-httpd-php .php
+""";
+
+    private const string DefaultMariaDbTemplate = """
+[mysqld]
+basedir={{MARIADB_ROOT}}
+datadir={{DATA_DIR}}
+port=3306
+bind-address=127.0.0.1
+character-set-server=utf8mb4
+collation-server=utf8mb4_general_ci
+
+[client]
+port=3306
+host=127.0.0.1
+""";
 
     private async Task LoadLogAsync()
     {
@@ -854,22 +953,25 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void RefreshPhpList()
+    private async Task RefreshPhpListAsync()
     {
-        PhpList.Items.Clear();
-        foreach (var install in GetPhpInstalls())
+        ViewModel.PhpInstalls.Clear();
+        PhpInstall? activeInstall = null;
+        foreach (var install in await GetPhpInstallsAsync())
         {
-            PhpList.Items.Add(install);
-            if (install.Active) PhpList.SelectedItem = install;
+            ViewModel.PhpInstalls.Add(install);
+            if (install.Active) activeInstall = install;
         }
+
+        ViewModel.SelectedPhpInstall = activeInstall ?? ViewModel.PhpInstalls.FirstOrDefault();
         UpdatePhpPreview();
     }
 
-    private IEnumerable<PhpInstall> GetPhpInstalls()
+    private async Task<IEnumerable<PhpInstall>> GetPhpInstallsAsync()
     {
-        var active = GetApachePhpDir();
-        if (!Directory.Exists(root)) return Array.Empty<PhpInstall>();
-        return Directory.GetDirectories(root, "php*")
+        var active = await GetApachePhpDirAsync();
+        if (!Directory.Exists(stackRoot)) return Array.Empty<PhpInstall>();
+        return Directory.GetDirectories(stackRoot, "php*")
             .Where(dir => File.Exists(Path.Combine(dir, "php.exe")))
             .Select(dir => new PhpInstall
             {
@@ -886,7 +988,7 @@ public sealed partial class MainPage : Page
     private void UpdatePhpPreview()
     {
         if (PhpPreviewBox == null || PhpValidationText == null) return;
-        if (PhpList.SelectedItem is not PhpInstall selected)
+        if (ViewModel.SelectedPhpInstall is not PhpInstall selected)
         {
             PhpPreviewBox.Text = "Pilih versi PHP untuk melihat preview.";
             PhpValidationText.Text = "Pilih versi PHP untuk melihat validasi.";
@@ -920,7 +1022,12 @@ public sealed partial class MainPage : Page
 
     private async void UsePhpButton_Click(object sender, RoutedEventArgs e)
     {
-        if (PhpList.SelectedItem is not PhpInstall selected) return;
+        await ViewModel.UsePhpCommand.ExecuteAsync(null);
+    }
+
+    private async Task UseSelectedPhpAsync()
+    {
+        if (ViewModel.SelectedPhpInstall is not PhpInstall selected) return;
         var validation = ValidatePhpInstall(selected).ToList();
         if (validation.Count > 0)
         {
@@ -928,70 +1035,63 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var confirm = await ShowConfirmAsync("Apply PHP switch?", PhpPreviewBox.Text + Environment.NewLine + Environment.NewLine + "Backup config akan dibuat sebelum perubahan.");
+        var confirm = await ShowConfirmAsync("Apply PHP switch?", PhpPreviewBox.Text + Environment.NewLine + Environment.NewLine + "Apache config akan dirender ulang dari template. Jika Apache sedang berjalan, proses akan restart otomatis.");
         if (!confirm) return;
 
-        var phpForward = selected.Path.Replace('\\', '/');
-        var phpPathPattern = "[A-Za-z]:/[^\"\r\n]*?/php(?:[-_][^/\"]+)?";
-        var phpEnvPattern = "\\\\\\\\[^\"]*?php(?:[-_][^\"]+)?";
-        var phpEnv = @"\\" + Path.GetFileName(root.TrimEnd('\\')) + @"\\" + selected.Name;
-        var backup = xamppConf + ".app-bak-" + DateTime.Now.ToString("yyyyMMddHHmmss");
-        File.Copy(xamppConf, backup, true);
-        lastPhpBackup = backup;
-        var content = await File.ReadAllTextAsync(xamppConf);
+        var wasRunning = GetProcesses("httpd").Count > 0;
+        previousPhpName = settings.ActivePhpName;
+        settings.ActivePhpName = selected.Name;
+        ApplySettingsToPaths();
+        await SaveSettingsAsync();
+        await PreparePortableConfigurationAsync();
 
-        content = Regex.Replace(content, "SetEnv MIBDIRS \"" + phpPathPattern + "/extras/mibs\"", "SetEnv MIBDIRS \"" + phpForward + "/extras/mibs\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "SetEnv PHP_PEAR_SYSCONF_DIR \"" + phpEnvPattern + "\"", "SetEnv PHP_PEAR_SYSCONF_DIR \"" + phpEnv + "\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "SetEnv PHPRC \"" + phpEnvPattern + "\"", "SetEnv PHPRC \"" + phpEnv + "\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "LoadFile \"" + phpPathPattern + "/php8ts\\.dll\"", "LoadFile \"" + phpForward + "/php8ts.dll\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "LoadFile \"" + phpPathPattern + "/libpq\\.dll\"", "LoadFile \"" + phpForward + "/libpq.dll\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "LoadFile \"" + phpPathPattern + "/libsqlite3\\.dll\"", "LoadFile \"" + phpForward + "/libsqlite3.dll\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "LoadModule php_module \"" + phpPathPattern + "/php8apache2_4\\.dll\"", "LoadModule php_module \"" + phpForward + "/php8apache2_4.dll\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "PHPINIDir \"" + phpPathPattern + "\"", "PHPINIDir \"" + phpForward + "\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "ScriptAlias /php-cgi/ \"" + phpPathPattern + "/\"", "ScriptAlias /php-cgi/ \"" + phpForward + "/\"", RegexOptions.IgnoreCase);
-        content = Regex.Replace(content, "<Directory \"" + phpPathPattern + "\">", "<Directory \"" + phpForward + "\">", RegexOptions.IgnoreCase);
-
-        await File.WriteAllTextAsync(xamppConf, content);
-        var test = RunCapture(apacheExe, "-t -f \"" + apacheConf + "\"");
-        if (!test.Contains("Syntax OK", StringComparison.OrdinalIgnoreCase))
+        var test = File.Exists(apacheExe) ? RunCapture(apacheExe, "-t -f \"" + apacheConf + "\"") : "Apache binary not found.";
+        if (!test.Contains("Syntax OK", StringComparison.OrdinalIgnoreCase) && File.Exists(apacheExe))
         {
-            File.Copy(backup, xamppConf, true);
-            await ShowMessageAsync("Apache config gagal, rollback", test);
+            await ShowMessageAsync("Apache config warning", test);
             return;
         }
 
-        await ShowMessageAsync("PHP switched", "Apache diarahkan ke " + selected.Name + ". Restart Apache agar aktif.");
+        if (wasRunning)
+        {
+            await StopApacheAsync();
+            await StartApacheAsync();
+        }
+
+        await ShowMessageAsync("PHP switched", "Apache diarahkan ke " + selected.Name + ".");
         await AppendActivityAsync("PHP Switcher", "Succeeded", "Apache PHP set to " + selected.Name);
-        RefreshPhpList();
-        RefreshStatus();
+        await RefreshPhpListAsync();
+        await RefreshStatusAsync();
     }
 
     private async Task RollbackLastPhpBackupAsync()
     {
-        var backup = lastPhpBackup ?? Directory.GetFiles(Path.GetDirectoryName(xamppConf) ?? root, Path.GetFileName(xamppConf) + ".app-bak-*")
-            .OrderByDescending(File.GetLastWriteTime)
-            .FirstOrDefault();
-        if (backup == null || !File.Exists(backup))
+        if (string.IsNullOrWhiteSpace(previousPhpName))
         {
-            await ShowMessageAsync("Rollback PHP", "Backup PHP switch belum ditemukan.");
+            await ShowMessageAsync("Rollback PHP", "Belum ada versi PHP sebelumnya di sesi aplikasi ini.");
             return;
         }
 
-        var confirm = await ShowConfirmAsync("Rollback PHP config?", "Restore backup ini ke httpd-xampp.conf?" + Environment.NewLine + backup);
+        var confirm = await ShowConfirmAsync("Rollback PHP config?", "Kembalikan PHP aktif ke " + previousPhpName + "?");
         if (!confirm) return;
 
-        File.Copy(backup, xamppConf, true);
-        var test = RunCapture(apacheExe, "-t -f \"" + apacheConf + "\"");
-        if (!test.Contains("Syntax OK", StringComparison.OrdinalIgnoreCase))
+        var current = settings.ActivePhpName;
+        settings.ActivePhpName = previousPhpName;
+        previousPhpName = current;
+        ApplySettingsToPaths();
+        await SaveSettingsAsync();
+        await PreparePortableConfigurationAsync();
+
+        if (GetProcesses("httpd").Count > 0)
         {
-            await ShowMessageAsync("Rollback warning", "Backup sudah direstore, tapi Apache config masih bermasalah:" + Environment.NewLine + test);
-            return;
+            await StopApacheAsync();
+            await StartApacheAsync();
         }
 
-        await AppendActivityAsync("PHP Switcher", "Rolled back", "Restored " + backup);
-        RefreshPhpList();
-        RefreshStatus();
-        await ShowMessageAsync("Rollback complete", "Config PHP sudah dikembalikan dari backup terakhir.");
+        await AppendActivityAsync("PHP Switcher", "Rolled back", "Restored PHP " + settings.ActivePhpName);
+        await RefreshPhpListAsync();
+        await RefreshStatusAsync();
+        await ShowMessageAsync("Rollback complete", "PHP aktif dikembalikan ke " + settings.ActivePhpName + ".");
     }
 
     private async Task RepairPhpMyAdminAccessAsync()
@@ -1037,16 +1137,31 @@ public sealed partial class MainPage : Page
         await AppendActivityAsync("Repair phpMyAdmin access", "Config updated", "Backup: " + backup);
     }
 
-    private async Task ShowMessageAsync(string title, string message)
+    private Task ShowMessageAsync(string title, string message)
     {
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = message,
-            CloseButtonText = "OK",
-            XamlRoot = XamlRoot
-        };
-        await dialog.ShowAsync();
+        var combined = title + " " + message;
+        var severity =
+            combined.Contains("warning", StringComparison.OrdinalIgnoreCase) ? InfoBarSeverity.Warning :
+            combined.Contains("gagal", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("tidak bisa", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("tidak ditemukan", StringComparison.OrdinalIgnoreCase) ? InfoBarSeverity.Error :
+            combined.Contains("saved", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("reset", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("switched", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("complete", StringComparison.OrdinalIgnoreCase) ? InfoBarSeverity.Success :
+            InfoBarSeverity.Informational;
+
+        ShowInfo(title, message, severity);
+        return Task.CompletedTask;
+    }
+
+    private void ShowInfo(string title, string message, InfoBarSeverity severity)
+    {
+        AppInfoBar.Title = title;
+        AppInfoBar.Message = message;
+        AppInfoBar.Severity = severity;
+        AppInfoBar.IsOpen = true;
     }
 
     private async Task<bool> ShowConfirmAsync(string title, string message)
@@ -1100,4 +1215,16 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void OpenPortableTerminal()
+    {
+        var terminal = ResolveExecutablePath("wt.exe");
+        var psi = terminal != null
+            ? new ProcessStartInfo(terminal, "-d \"" + root + "\" cmd /k")
+            : new ProcessStartInfo("cmd.exe", "/k cd /d \"" + root + "\"");
+
+        psi.WorkingDirectory = root;
+        psi.UseShellExecute = false;
+        psi.EnvironmentVariables["PATH"] = BuildPortablePath(selectedPhpDir);
+        Process.Start(psi);
+    }
 }

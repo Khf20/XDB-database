@@ -304,6 +304,14 @@
             </Grid>
 
             <Grid Grid.Row="1" Margin="0,22,0,0">
+                <InfoBar
+                    x:Name="AppInfoBar"
+                    Margin="0,0,0,12"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Canvas.ZIndex="20"
+                    IsOpen="False" />
+
                 <ScrollViewer
                     x:Name="DashboardView"
                     HorizontalScrollBarVisibility="Disabled"
@@ -662,7 +670,7 @@
                         <Button x:Name="ToolOpenHtdocs" Grid.Row="0" Grid.Column="0" Click="OpenHtdocs_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE8B7;" />
-                                <TextBlock FontSize="22" Text="Open htdocs" />
+                                <TextBlock FontSize="22" Text="Open www" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ToolApacheConfig" Grid.Row="0" Grid.Column="1" Click="OpenApacheConfig_Click" Style="{StaticResource ToolTileStyle}">
@@ -680,7 +688,7 @@
                         <Button x:Name="ToolRoot" Grid.Row="1" Grid.Column="0" Click="OpenRoot_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE838;" />
-                                <TextBlock FontSize="22" Text="Open XAMPP Root" TextWrapping="WrapWholeWords" TextAlignment="Center" />
+                                <TextBlock FontSize="22" Text="Open XDB Root" TextWrapping="WrapWholeWords" TextAlignment="Center" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="ToolPhpMyAdmin" Grid.Row="1" Grid.Column="1" Click="PhpMyAdminButton_Click" Style="{StaticResource ToolTileStyle}">
@@ -734,7 +742,7 @@
                         <Button x:Name="ToolWindowsServices" Grid.Row="4" Grid.Column="0" Click="OpenWindowsServices_Click" Style="{StaticResource ToolTileStyle}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                                 <FontIcon FontFamily="Segoe Fluent Icons" FontSize="44" Glyph="&#xE950;" />
-                                <TextBlock FontSize="22" Text="Windows Services" />
+                                <TextBlock FontSize="22" Text="Open Terminal" />
                             </StackPanel>
                         </Button>
                     </Grid>
@@ -767,8 +775,8 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8">
-                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="XAMPP root" />
-                                    <TextBox x:Name="XamppRootBox" PlaceholderText="C:\xampp" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="XDB portable root" />
+                                    <TextBox x:Name="XamppRootBox" PlaceholderText="D:\XDB-database" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1" Spacing="8">
                                     <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Browser" />
@@ -779,12 +787,12 @@
                                         <ComboBoxItem Content="Firefox" />
                                     </ComboBox>
                                 </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="8">
-                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Apache service name" />
+                                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="8" Visibility="Collapsed">
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Legacy Apache service name" />
                                     <TextBox x:Name="ApacheServiceBox" PlaceholderText="Apache2.4" />
                                 </StackPanel>
-                                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="8">
-                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="MySQL service names" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="8" Visibility="Collapsed">
+                                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" Text="Legacy MySQL service names" />
                                     <TextBox x:Name="MysqlServiceBox" PlaceholderText="mysql;MariaDB" />
                                 </StackPanel>
                             </Grid>
