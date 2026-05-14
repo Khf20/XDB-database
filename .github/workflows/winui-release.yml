@@ -1,0 +1,32 @@
+name: WinUI Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: .\build-winui.bat
+
+      - name: Package
+        run: .\make-release.bat
+
+      - name: Upload release zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: XDB-database-release
+          path: release/XDB-database-v1.0.0.zip

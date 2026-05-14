@@ -33,12 +33,14 @@ Copy-Item -LiteralPath (Join-Path $root 'Install-XDB-database.bat') -Destination
 Copy-Item -LiteralPath (Join-Path $root 'install-winui.bat') -Destination $outDir
 Copy-Item -LiteralPath (Join-Path $root 'install-winui.ps1') -Destination $outDir
 
-foreach ($folder in @('config', 'stack', 'www', 'data')) {
+foreach ($folder in @('apps', 'config', 'scripts', 'stack', 'www', 'data')) {
     $source = Join-Path $root $folder
     if (Test-Path -LiteralPath $source) {
         Copy-Item -LiteralPath $source -Destination (Join-Path $outDir $folder) -Recurse -Force
     }
 }
+
+Copy-Item -LiteralPath (Join-Path $root 'xdb-shell.cmd') -Destination $outDir
 
 $zip = Join-Path $releaseDir "XDB-database-$version.zip"
 Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue

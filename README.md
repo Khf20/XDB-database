@@ -34,6 +34,9 @@ Place portable binaries in:
 - Dynamic config rendering from `config/*.template.*`
 - PHP switcher for isolated `stack/php*` folders
 - Open Terminal with temporary PATH injection for PHP and MariaDB
+- Optional `scripts/install-stack.ps1` helper for downloading ZIP binaries when URLs are provided
+- MariaDB data initialization when `mariadb-install-db.exe` is present
+- Automatic fallback to Apache port 8080 and MariaDB port 3307 when default ports are busy
 - Log viewer, activity log, port conflict detection, and health summary
 - phpMyAdmin access repair helper
 - WinUI 3 dashboard with service transition states and non-blocking InfoBar feedback
@@ -57,6 +60,19 @@ make-release.bat
 ```
 
 The release folder includes the MSIX bundle plus `config`, `stack`, `www`, and `data` folders so the portable layout stays together.
+
+## Install Stack Binaries
+
+XDB does not commit Apache/PHP/MariaDB binaries into Git. Provide ZIP URLs manually:
+
+```powershell
+.\scripts\install-stack.ps1 `
+  -ApacheZipUrl "https://example.com/apache.zip" `
+  -PhpZipUrl "https://example.com/php.zip" `
+  -MariaDbZipUrl "https://example.com/mariadb.zip"
+```
+
+phpMyAdmin can be extracted to `apps/phpmyadmin`; Apache will expose it as `/phpmyadmin` when that folder exists.
 
 ## Install Locally
 

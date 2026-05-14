@@ -31,3 +31,9 @@ Initial WinUI 3 release.
 - Added dashboard health summary for Apache, MySQL, phpMyAdmin, and PHP version mismatch.
 - Expanded Tools with quick access to `php.ini`, `my.ini`, `httpd.conf`, `httpd-vhosts.conf`, `error.log`, and Windows Services.
 - Added PHP Switcher preview, stricter PHP file validation, confirmation, and rollback to the last backup.
+- Added portable stack foundation with `config`, `stack`, `www`, `data`, `apps`, and `scripts` folders.
+- Added dynamic Apache/MariaDB config rendering with runtime path placeholders.
+- Added direct process control for Apache and MariaDB without Windows Services.
+- Added MariaDB data initialization when `mariadb-install-db.exe` is available.
+- Added port fallback support for Apache 8080 and MariaDB 3307 when default ports are busy.
+- Added portable shell helper and GitHub Actions Windows release workflow.

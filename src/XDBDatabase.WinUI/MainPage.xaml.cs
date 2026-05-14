@@ -44,6 +44,8 @@ public sealed partial class MainPage : Page
     private string dataDir = "";
     private string apacheTemplateFile = "";
     private string mariadbTemplateFile = "";
+    private int apachePort = 80;
+    private int mysqlPort = 3306;
     private ServiceState? apacheTransientState;
     private ServiceState? mysqlTransientState;
     private bool apacheOperationActive;
@@ -107,8 +109,8 @@ public sealed partial class MainPage : Page
     private void ToolsNav_Click(object sender, RoutedEventArgs e) => ShowView(ToolsView, "Tools");
     private void SettingsNav_Click(object sender, RoutedEventArgs e) => ShowView(SettingsView, "Settings");
     private async void RefreshButton_Click(object sender, RoutedEventArgs e) => await ViewModel.RefreshCommand.ExecuteAsync(null);
-    private void PhpMyAdminButton_Click(object sender, RoutedEventArgs e) => OpenUrl("http://localhost/phpmyadmin/");
-    private void OpenDashboard_Click(object sender, RoutedEventArgs e) => OpenUrl("http://localhost/dashboard/");
+    private void PhpMyAdminButton_Click(object sender, RoutedEventArgs e) => OpenUrl(BuildLocalUrl("/phpmyadmin/"));
+    private void OpenDashboard_Click(object sender, RoutedEventArgs e) => OpenUrl(BuildLocalUrl("/"));
     private void OpenHtdocs_Click(object sender, RoutedEventArgs e) => OpenPath(wwwDir);
     private void OpenApacheConfig_Click(object sender, RoutedEventArgs e) => OpenPath(Path.Combine(apacheRoot, "conf"));
     private void OpenMysqlData_Click(object sender, RoutedEventArgs e) => OpenPath(dataDir);
@@ -439,9 +441,9 @@ public sealed partial class MainPage : Page
 
         ApachePidText.Text = state.ApachePids.Any() ? "PID " + string.Join(", ", state.ApachePids) : "PID -";
         MysqlPidText.Text = state.MysqlPids.Any() ? "PID " + string.Join(", ", state.MysqlPids) : "PID -";
-        ApachePortsText.Text = "Port 80: " + (state.Port80 ?? "free") + Environment.NewLine +
+        ApachePortsText.Text = "Port " + apachePort + ": " + (state.Port80 ?? "free") + Environment.NewLine +
                                "Port 443: " + (state.Port443 ?? "free");
-        MysqlPortsText.Text = "Port 3306: " + (state.Port3306 ?? "free");
+        MysqlPortsText.Text = "Port " + mysqlPort + ": " + (state.Port3306 ?? "free");
 
         StartApacheButton.IsEnabled = !state.ApacheRunning;
         StopApacheButton.IsEnabled = state.ApacheRunning;
@@ -552,7 +554,7 @@ public sealed partial class MainPage : Page
         if (!apacheRunning) return "phpMyAdmin offline";
         try
         {
-            using var response = await localHttp.GetAsync("http://localhost/phpmyadmin/");
+            using var response = await localHttp.GetAsync(BuildLocalUrl("/phpmyadmin/"));
             return response.StatusCode == HttpStatusCode.Forbidden ? "phpMyAdmin Forbidden" : "phpMyAdmin OK";
         }
         catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
@@ -580,9 +582,9 @@ public sealed partial class MainPage : Page
             MysqlRunning = mysqld.Count > 0,
             ApachePids = httpd.Select(p => p.Id).ToList(),
             MysqlPids = mysqld.Select(p => p.Id).ToList(),
-            Port80 = FormatPort(ports, 80),
+            Port80 = FormatPort(ports, apachePort),
             Port443 = FormatPort(ports, 443),
-            Port3306 = FormatPort(ports, 3306),
+            Port3306 = FormatPort(ports, mysqlPort),
             PortConflicts = ports.Values.Where(port => !port.OwnedByXampp).ToList(),
             ApacheVersion = FirstLine(apacheExe, "-v"),
             ApachePhpVersion = FirstLine(apachePhpExe, "-v"),
@@ -619,7 +621,7 @@ public sealed partial class MainPage : Page
             if (!lineTrim.Contains("LISTENING")) continue;
             var parts = Regex.Split(lineTrim, "\\s+");
             if (parts.Length < 5) continue;
-            foreach (var port in new[] { 80, 443, 3306 })
+            foreach (var port in new[] { 80, 443, 3306, 3307, 8080 })
             {
                 if (parts[1].EndsWith(":" + port, StringComparison.OrdinalIgnoreCase))
                 {
@@ -723,6 +725,7 @@ public sealed partial class MainPage : Page
         EnsurePortableBinaryExists(apacheExe, "Apache binary belum ada. Ekstrak Apache Lounge ke stack\\apache.");
         EnsurePortableBinaryExists(mysqlExe, "MariaDB binary belum ada. Ekstrak MariaDB portable ke stack\\mariadb.");
         EnsurePortableBinaryExists(phpExe, "PHP binary belum ada. Ekstrak PHP for Windows ke " + selectedPhpDir + ".");
+        ResolveRuntimePorts();
 
         if (!File.Exists(apacheTemplateFile))
         {
@@ -733,6 +736,8 @@ public sealed partial class MainPage : Page
         {
             await File.WriteAllTextAsync(mariadbTemplateFile, DefaultMariaDbTemplate);
         }
+
+        await EnsureMariaDbDataInitializedAsync();
 
         var replacements = BuildTemplateReplacements();
         var apacheTemplate = await File.ReadAllTextAsync(apacheTemplateFile);
@@ -750,9 +755,34 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void ResolveRuntimePorts()
+    {
+        var ports = GetListeningPorts();
+        apachePort = ChoosePort(ports, 80, 8080);
+        mysqlPort = ChoosePort(ports, 3306, 3307);
+    }
+
+    private static int ChoosePort(Dictionary<int, PortInfo> ports, int preferred, int fallback)
+    {
+        if (!ports.TryGetValue(preferred, out var preferredInfo) || preferredInfo.OwnedByXampp)
+        {
+            return preferred;
+        }
+
+        return !ports.ContainsKey(fallback) ? fallback : preferred;
+    }
+
     private Dictionary<string, string> BuildTemplateReplacements()
     {
         var phpApacheDll = Path.Combine(selectedPhpDir, "php8apache2_4.dll");
+        var phpMyAdminDir = Path.Combine(root, @"apps\phpmyadmin");
+        var phpMyAdminAlias = Directory.Exists(phpMyAdminDir)
+            ? "Alias /phpmyadmin \"" + PortablePath(phpMyAdminDir) + "/\"" + Environment.NewLine +
+              "<Directory \"" + PortablePath(phpMyAdminDir) + "\">" + Environment.NewLine +
+              "    AllowOverride All" + Environment.NewLine +
+              "    Require local" + Environment.NewLine +
+              "</Directory>"
+            : "# phpMyAdmin not bundled yet. Place it in apps/phpmyadmin.";
         return new Dictionary<string, string>
         {
             ["APP_ROOT"] = PortablePath(root),
@@ -763,7 +793,10 @@ public sealed partial class MainPage : Page
             ["PHP_APACHE_DLL"] = PortablePath(phpApacheDll),
             ["WWW_ROOT"] = PortablePath(wwwDir),
             ["DATA_DIR"] = PortablePath(dataDir),
-            ["APACHE_LOGS"] = PortablePath(Path.Combine(apacheRoot, "logs"))
+            ["APACHE_LOGS"] = PortablePath(Path.Combine(apacheRoot, "logs")),
+            ["APACHE_PORT"] = apachePort.ToString(),
+            ["MYSQL_PORT"] = mysqlPort.ToString(),
+            ["PHPMYADMIN_ALIAS"] = phpMyAdminAlias
         };
     }
 
@@ -789,6 +822,35 @@ public sealed partial class MainPage : Page
             Environment.GetEnvironmentVariable("PATH") ?? ""
         };
         return string.Join(Path.PathSeparator, parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+    }
+
+    private async Task EnsureMariaDbDataInitializedAsync()
+    {
+        var hasSystemTables = Directory.Exists(Path.Combine(dataDir, "mysql")) ||
+                              Directory.EnumerateFileSystemEntries(dataDir).Any(path => !Path.GetFileName(path).Equals(".gitkeep", StringComparison.OrdinalIgnoreCase));
+        if (hasSystemTables)
+        {
+            return;
+        }
+
+        var initExe = new[]
+        {
+            Path.Combine(mariadbRoot, @"bin\mariadb-install-db.exe"),
+            Path.Combine(mariadbRoot, @"bin\mysql_install_db.exe")
+        }.FirstOrDefault(File.Exists);
+
+        if (initExe == null)
+        {
+            throw new InvalidOperationException("Folder data MariaDB masih kosong, tetapi tool init tidak ditemukan. Cari mariadb-install-db.exe di stack\\mariadb\\bin atau init database manual.");
+        }
+
+        var args = "--datadir=\"" + dataDir + "\" --basedir=\"" + mariadbRoot + "\"";
+        var result = await Task.Run(() => RunCaptureResult(initExe, args, 60000));
+        await File.WriteAllTextAsync(Path.Combine(dataDir, "xdb-mariadb-init.log"), result.Output);
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException("Init MariaDB gagal. Detail: " + Shorten(result.Output));
+        }
     }
 
     private async Task StartApacheAsync()
@@ -849,7 +911,7 @@ public sealed partial class MainPage : Page
 
     private async Task StopMysqlAsync()
     {
-        var result = await Task.Run(() => RunCaptureResult(mysqlAdminExe, "--user=root --protocol=tcp --port=3306 shutdown", 15000));
+        var result = await Task.Run(() => RunCaptureResult(mysqlAdminExe, "--user=root --protocol=tcp --port=" + mysqlPort + " shutdown", 15000));
         if (await WaitUntilAsync(() => GetProcesses("mysqld").Count == 0, TimeSpan.FromSeconds(12)))
         {
             return;
@@ -882,12 +944,12 @@ public sealed partial class MainPage : Page
 
     private const string DefaultApacheTemplate = """
 ServerRoot "{{APACHE_ROOT}}"
-Listen 80
+Listen {{APACHE_PORT}}
 
 LoadModule php_module "{{PHP_APACHE_DLL}}"
 PHPINIDir "{{PHP_ROOT}}"
 
-ServerName localhost:80
+ServerName localhost:{{APACHE_PORT}}
 DocumentRoot "{{WWW_ROOT}}"
 DirectoryIndex index.php index.html
 
@@ -901,19 +963,21 @@ ErrorLog "{{APACHE_LOGS}}/error.log"
 CustomLog "{{APACHE_LOGS}}/access.log" common
 TypesConfig conf/mime.types
 AddType application/x-httpd-php .php
+
+{{PHPMYADMIN_ALIAS}}
 """;
 
     private const string DefaultMariaDbTemplate = """
 [mysqld]
 basedir={{MARIADB_ROOT}}
 datadir={{DATA_DIR}}
-port=3306
+port={{MYSQL_PORT}}
 bind-address=127.0.0.1
 character-set-server=utf8mb4
 collation-server=utf8mb4_general_ci
 
 [client]
-port=3306
+port={{MYSQL_PORT}}
 host=127.0.0.1
 """;
 
@@ -1217,14 +1281,42 @@ host=127.0.0.1
 
     private void OpenPortableTerminal()
     {
+        var shell = EnsurePortableShell();
         var terminal = ResolveExecutablePath("wt.exe");
         var psi = terminal != null
-            ? new ProcessStartInfo(terminal, "-d \"" + root + "\" cmd /k")
-            : new ProcessStartInfo("cmd.exe", "/k cd /d \"" + root + "\"");
+            ? new ProcessStartInfo(terminal, "-d \"" + root + "\" cmd /k \"" + shell + "\"")
+            : new ProcessStartInfo("cmd.exe", "/k \"" + shell + "\"");
 
         psi.WorkingDirectory = root;
         psi.UseShellExecute = false;
         psi.EnvironmentVariables["PATH"] = BuildPortablePath(selectedPhpDir);
         Process.Start(psi);
+    }
+
+    private string EnsurePortableShell()
+    {
+        var shell = Path.Combine(root, "xdb-shell.cmd");
+        if (!File.Exists(shell))
+        {
+            File.WriteAllText(shell, """
+@echo off
+set "XDB_ROOT=%~dp0"
+set "PATH=%XDB_ROOT%stack\php;%XDB_ROOT%stack\mariadb\bin;%XDB_ROOT%stack\apache\bin;%PATH%"
+cd /d "%XDB_ROOT%www"
+title XDB Portable Shell
+echo XDB Portable Shell
+echo ------------------
+echo php, mysql, and Apache tools are available in this terminal session.
+echo.
+""");
+        }
+
+        return shell;
+    }
+
+    private string BuildLocalUrl(string path)
+    {
+        if (!path.StartsWith('/')) path = "/" + path;
+        return "http://localhost" + (apachePort == 80 ? "" : ":" + apachePort) + path;
     }
 }
